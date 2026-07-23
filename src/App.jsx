@@ -168,7 +168,7 @@ export default function App() {
     formData.append('user_id', `${session.user.id}_${activeSessionId}`);
 
     try {
-      await axios.post('${API_BASE_URL}/upload/', formData, { headers: { 'Content-Type': 'multipart/form-data' }});
+      await axios.post(`${API_BASE_URL}/upload/`, formData, { headers: { 'Content-Type': 'multipart/form-data' }});
       setUploadStatus('Attached: ' + selectedFile.name);
     } catch (error) {
       console.error(error);
@@ -195,7 +195,7 @@ export default function App() {
     }));
 
     try {
-      const response = await axios.post('${API_BASE_URL}/chat/', {
+      const response = await axios.post(`${API_BASE_URL}/chat/`, {
         session_id: `${session.user.id}_${activeSessionId}`,
         query: userQuery, api_key: apiKey, mode: mode
       });
