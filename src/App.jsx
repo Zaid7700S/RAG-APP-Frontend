@@ -106,30 +106,34 @@ export default function App() {
     return () => { subscription.unsubscribe(); window.removeEventListener('resize', handleResize); };
   }, []);
 
-  const initializeUserData = async (user) => {
-    // 1. Load API Key
-    if (user.user_metadata?.groq_api_key) {
-      setApiKey(user.user_metadata.groq_api_key);
+   const initializeUserData = async (user) => {
+    // 1. FORCE CLOUD FETCH: Bypasses the local browser cache so API key syncs across devices instantly
+    const { data: { user: freshUser } } = await supabase.auth.getUser();
+    const activeUser = freshUser || user;
+
+    // 2. Load API Key from the freshly fetched cloud data
+    if (activeUser.user_metadata?.groq_api_key) {
+      setApiKey(activeUser.user_metadata.groq_api_key);
     }
     
-    // 2. Fetch Sessions from Cloud
+    // 3. Fetch Sessions from Cloud
     const { data, error } = await supabase
       .from('workspace_sessions')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', activeUser.id)
       .order('updated_at', { ascending: false });
 
     if (data && data.length > 0) {
       setSessions(data);
       setActiveSessionId(data[0].id);
     } else {
-      // Create first session in cloud
+      // Create first session in cloud if empty
       const newId = `session_${Date.now()}`;
       const newSession = { id: newId, title: 'New Session', history: [] };
       setSessions([newSession]);
       setActiveSessionId(newId);
       await supabase.from('workspace_sessions').insert({
-        id: newId, user_id: user.id, title: newSession.title, history: newSession.history
+        id: newId, user_id: activeUser.id, title: newSession.title, history: newSession.history
       });
     }
     setIsAppReady(true);
