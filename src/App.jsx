@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Menu } from 'lucide-react';
 import axios from 'axios';
 import { supabase } from './supabaseClient';
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import ChatWindow from './components/ChatWindow';
 import InputBar from './components/InputBar';
-                                                                                                                                                                    
 
 const themeColors = {
   dark: {
@@ -102,7 +102,7 @@ export default function App() {
   useEffect(() => localStorage.setItem('workspace_sessions', JSON.stringify(sessions)), [sessions]);
   useEffect(() => localStorage.setItem('workspace_theme', theme), [theme]);
   
-  // FIXED: Safe scrolling prevents detach crashes
+  // Safe scrolling prevents detach crashes
   useEffect(() => {
     if (chatEndRef.current) {
       try { chatEndRef.current.scrollIntoView({ behavior: 'smooth' }); } catch (e) {}
@@ -132,7 +132,6 @@ export default function App() {
       if (isMobile) setIsSidebarOpen(false);
       return;
     }
-    // FIXED: Collision-proof IDs
     const newId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setSessions(prev => [{ id: newId, title: 'New Session', history: [] }, ...prev]);
     setActiveSessionId(newId);
@@ -168,7 +167,11 @@ export default function App() {
     formData.append('user_id', `${session.user.id}_${activeSessionId}`);
 
     try {
-      await axios.post(`${API_BASE_URL}/upload/`, formData, { headers: { 'Content-Type': 'multipart/form-data' }});
+      const backendUrl = "https://rag-app-6zlh.onrender.com"; 
+      
+      await axios.post(backendUrl + '/upload/', formData, { 
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       setUploadStatus('Attached: ' + selectedFile.name);
     } catch (error) {
       console.error(error);
@@ -195,7 +198,8 @@ export default function App() {
     }));
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/chat/`, {
+      const backendUrl = "https://rag-app-6zlh.onrender.com";
+      const response = await axios.post(backendUrl + '/chat/', {
         session_id: `${session.user.id}_${activeSessionId}`,
         query: userQuery, api_key: apiKey, mode: mode
       });
@@ -243,12 +247,24 @@ export default function App() {
         />
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', height: '100%', boxSizing: 'border-box', minWidth: 0 }}>
+          
+          {/* PINNED HEADER - Now safely outside the ChatWindow and flex-center logic */}
+          <div style={{ padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', minHeight: '40px', width: '100%', boxSizing: 'border-box' }}>
+            {!isSidebarOpen && (
+              <button 
+                onClick={() => setIsSidebarOpen(true)} 
+                style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer', zIndex: 50 }}
+              >
+                <Menu size={24} />
+              </button>
+            )}
+          </div>
+
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: chatHistory.length === 0 ? 'center' : 'space-between', boxSizing: 'border-box', overflow: 'hidden' }}>
             
             <ChatWindow 
               t={t} chatHistory={chatHistory} 
               loadingChat={loadingChat} chatEndRef={chatEndRef}
-              isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
             />
 
             <InputBar 
