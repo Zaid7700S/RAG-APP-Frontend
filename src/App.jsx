@@ -54,23 +54,18 @@ const themeColors = {
 
 export default function App() {
   const [session, setSession] = useState(null);
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const [isAppReady, setIsAppReady] = useState(false);
   
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('groq_api_key') || '');
+  const [apiKey, setApiKey] = useState('');
   const [tempApiKey, setTempApiKey] = useState('');
   const [mode, setMode] = useState('Auto');
   const [showDropdown, setShowDropdown] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('workspace_theme') || 'dark');
   
-  const [sessions, setSessions] = useState(() => {
-    const saved = localStorage.getItem('workspace_sessions');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
-    }
-    return [{ id: 'session_' + Date.now(), title: 'New Session', history: [] }];
-  });
+  // Cloud synced sessions
+  const [sessions, setSessions] = useState([]);
+  const [activeSessionId, setActiveSessionId] = useState(null);
   
-  const [activeSessionId, setActiveSessionId] = useState(() => sessions[0]?.id || 'default');
   const [query, setQuery] = useState('');
   const [loadingChat, setLoadingChat] = useState(false);
   
@@ -84,10 +79,22 @@ export default function App() {
   const chatEndRef = useRef(null);
   const t = themeColors[theme];
 
-  // System Effects
+  // CLOUD INITIALIZATION
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) initializeUserData(session.user);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) {
+        initializeUserData(session.user);
+      } else {
+        setSessions([]);
+        setIsAppReady(false);
+      }
+    });
 
     const handleResize = () => {
       const mobile = window.innerWidth <= 768;
@@ -99,43 +106,83 @@ export default function App() {
     return () => { subscription.unsubscribe(); window.removeEventListener('resize', handleResize); };
   }, []);
 
-  useEffect(() => localStorage.setItem('workspace_sessions', JSON.stringify(sessions)), [sessions]);
+  const initializeUserData = async (user) => {
+    // 1. Load API Key
+    if (user.user_metadata?.groq_api_key) {
+      setApiKey(user.user_metadata.groq_api_key);
+    }
+    
+    // 2. Fetch Sessions from Cloud
+    const { data, error } = await supabase
+      .from('workspace_sessions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false });
+
+    if (data && data.length > 0) {
+      setSessions(data);
+      setActiveSessionId(data[0].id);
+    } else {
+      // Create first session in cloud
+      const newId = `session_${Date.now()}`;
+      const newSession = { id: newId, title: 'New Session', history: [] };
+      setSessions([newSession]);
+      setActiveSessionId(newId);
+      await supabase.from('workspace_sessions').insert({
+        id: newId, user_id: user.id, title: newSession.title, history: newSession.history
+      });
+    }
+    setIsAppReady(true);
+  };
+
   useEffect(() => localStorage.setItem('workspace_theme', theme), [theme]);
   
-  // Safe scrolling prevents detach crashes
   useEffect(() => {
     if (chatEndRef.current) {
       try { chatEndRef.current.scrollIntoView({ behavior: 'smooth' }); } catch (e) {}
     }
   }, [sessions, activeSessionId]);
 
-  // Handlers
-  const handleSaveApiKey = (e) => {
+  const handleSaveApiKey = async (e) => {
     e.preventDefault();
-    setApiKey(tempApiKey);
-    localStorage.setItem('groq_api_key', tempApiKey);
-    setShowSettingsDrawer(false);
+    try {
+      const { error } = await supabase.auth.updateUser({ data: { groq_api_key: tempApiKey } });
+      if (error) throw error;
+      setApiKey(tempApiKey);
+      setShowSettingsDrawer(false);
+    } catch (error) {
+      alert("Failed to securely save API key to cloud.");
+    }
   };
 
   const handleLogout = async () => {
-    localStorage.removeItem('groq_api_key');
-    localStorage.removeItem('workspace_sessions');
+    setApiKey('');
+    setIsAppReady(false);
     await supabase.auth.signOut();
   };
 
-  const currentSession = sessions.find(s => s.id === activeSessionId) || sessions[0] || { history: [] };
+  const currentSession = sessions.find(s => s.id === activeSessionId) || { history: [] };
   const chatHistory = currentSession.history || [];
 
-  const createNewSession = () => {
+  const createNewSession = async () => {
     if (sessions.length > 0 && sessions[0].history.length === 0) {
       setActiveSessionId(sessions[0].id);
       if (isMobile) setIsSidebarOpen(false);
       return;
     }
+    
     const newId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    setSessions(prev => [{ id: newId, title: 'New Session', history: [] }, ...prev]);
+    const newSession = { id: newId, title: 'New Session', history: [] };
+    
+    setSessions(prev => [newSession, ...prev]);
     setActiveSessionId(newId);
     if (isMobile) setIsSidebarOpen(false);
+
+    if (session?.user?.id) {
+      await supabase.from('workspace_sessions').insert({
+        id: newId, user_id: session.user.id, title: newSession.title, history: newSession.history
+      });
+    }
   };
 
   const selectSession = (id) => {
@@ -143,16 +190,27 @@ export default function App() {
     if (isMobile) setIsSidebarOpen(false);
   };
 
-  const deleteSession = (e, idToDelete) => {
+  const deleteSession = async (e, idToDelete) => {
     e.stopPropagation();
     const newSessions = sessions.filter(s => s.id !== idToDelete);
+    
     if (newSessions.length === 0) {
       const newId = `session_${Date.now()}`;
-      setSessions([{ id: newId, title: 'New Session', history: [] }]);
+      const newSession = { id: newId, title: 'New Session', history: [] };
+      setSessions([newSession]);
       setActiveSessionId(newId);
+      if (session?.user?.id) {
+        await supabase.from('workspace_sessions').insert({
+          id: newId, user_id: session.user.id, title: newSession.title, history: newSession.history
+        });
+      }
     } else {
       setSessions(newSessions);
       if (activeSessionId === idToDelete) setActiveSessionId(newSessions[0].id);
+    }
+
+    if (session?.user?.id) {
+      await supabase.from('workspace_sessions').delete().eq('id', idToDelete);
     }
   };
 
@@ -168,13 +226,11 @@ export default function App() {
 
     try {
       const backendUrl = "https://rag-app-6zlh.onrender.com"; 
-      
       await axios.post(backendUrl + '/upload/', formData, { 
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setUploadStatus('Attached: ' + selectedFile.name);
     } catch (error) {
-      console.error(error);
       setUploadStatus(`Error: ${error.response?.data?.detail || error.message}`);
       setFile(null);
     }
@@ -189,13 +245,24 @@ export default function App() {
     setLoadingChat(true);
 
     const userMessage = { role: 'user', content: userQuery };
+    let updatedSessionForDB = null;
 
     setSessions(prevSessions => prevSessions.map(s => {
       if (s.id === activeSessionId) {
-        return { ...s, title: s.history.length === 0 ? (userQuery.slice(0, 22) + '...') : s.title, history: [...s.history, userMessage] };
+        const newTitle = s.history.length === 0 ? (userQuery.slice(0, 22) + '...') : s.title;
+        const updatedSession = { ...s, title: newTitle, history: [...s.history, userMessage] };
+        updatedSessionForDB = updatedSession; // Capture for sync
+        return updatedSession;
       }
       return s;
     }));
+
+    // Cloud Sync User Message
+    if (session?.user?.id && updatedSessionForDB) {
+      supabase.from('workspace_sessions').upsert({
+        id: updatedSessionForDB.id, user_id: session.user.id, title: updatedSessionForDB.title, history: updatedSessionForDB.history, updated_at: new Date().toISOString()
+      }).then();
+    }
 
     try {
       const backendUrl = "https://rag-app-6zlh.onrender.com";
@@ -203,11 +270,32 @@ export default function App() {
         session_id: `${session.user.id}_${activeSessionId}`,
         query: userQuery, api_key: apiKey, mode: mode
       });
+      
       const aiMessage = { role: 'ai', content: response.data.answer, intent: response.data.intent, sources: response.data.sources };
-      setSessions(prevSessions => prevSessions.map(s => s.id === activeSessionId ? { ...s, history: [...s.history, aiMessage] } : s));
+      
+      setSessions(prevSessions => prevSessions.map(s => {
+        if (s.id === activeSessionId) {
+          const finalSession = { ...s, history: [...s.history, aiMessage] };
+          // Cloud Sync AI Message
+          supabase.from('workspace_sessions').upsert({
+            id: finalSession.id, user_id: session.user.id, title: finalSession.title, history: finalSession.history, updated_at: new Date().toISOString()
+          }).then();
+          return finalSession;
+        }
+        return s;
+      }));
     } catch (error) {
       const errorMessage = { role: 'ai', content: `System Error: ${error.response?.data?.detail || error.message}` };
-      setSessions(prevSessions => prevSessions.map(s => s.id === activeSessionId ? { ...s, history: [...s.history, errorMessage] } : s));
+      setSessions(prevSessions => prevSessions.map(s => {
+        if (s.id === activeSessionId) {
+          const finalSession = { ...s, history: [...s.history, errorMessage] };
+          supabase.from('workspace_sessions').upsert({
+            id: finalSession.id, user_id: session.user.id, title: finalSession.title, history: finalSession.history, updated_at: new Date().toISOString()
+          }).then();
+          return finalSession;
+        }
+        return s;
+      }));
     } finally {
       setLoadingChat(false);
       setFile(null);
@@ -216,6 +304,13 @@ export default function App() {
   };
 
   if (!session) return <Login />;
+  
+  // Loading Screen while fetching cloud data
+  if (!isAppReady) return (
+    <div style={{ height: '100vh', width: '100vw', background: t.bgMain, display: 'flex', justifyContent: 'center', alignItems: 'center', color: t.textMain, fontFamily: 'system-ui, sans-serif' }}>
+      Fetching cloud workspace...
+    </div>
+  );
 
   const userFullName = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
 
@@ -248,7 +343,6 @@ export default function App() {
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', height: '100%', boxSizing: 'border-box', minWidth: 0 }}>
           
-          {/* PINNED HEADER - Now safely outside the ChatWindow and flex-center logic */}
           <div style={{ padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', minHeight: '40px', width: '100%', boxSizing: 'border-box' }}>
             {!isSidebarOpen && (
               <button 
