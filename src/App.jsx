@@ -461,6 +461,8 @@ export default function App() {
           setShowDocumentManager={setShowDocumentManager} // FIX: Pass setter to Sidebar
         />
 
+        {/* Replace everything from `<div style={{ flex: 1, display: 'flex', flexDirection: 'column'...` down to the closing `</div>` of the App */}
+
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', height: '100%', boxSizing: 'border-box', minWidth: 0 }}>
           
           <div style={{ padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', minHeight: '40px', width: '100%', boxSizing: 'border-box' }}>
@@ -474,31 +476,55 @@ export default function App() {
             )}
           </div>
 
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: chatHistory.length === 0 ? 'center' : 'space-between', boxSizing: 'border-box', overflow: 'hidden' }}>
-            
-            {attachedFiles.length > 0 && (
-              <div style={{ width: '100%', maxWidth: '850px', margin: '0 auto', padding: '0 1rem', display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1rem', boxSizing: 'border-box' }}>
-                {attachedFiles.map((fileName, idx) => (
-                  <span key={idx} style={{ padding: '4px 10px', fontSize: '0.75rem', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '12px', color: t.textMuted }}>
-                    📄 {fileName}
-                  </span>
-                ))}
+          {chatHistory.length === 0 ? (
+            /* EXACT CENTER LAYOUT FOR EMPTY CHAT */
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', paddingBottom: '10vh' }}>
+              <h2 style={{ fontSize: '1.8rem', fontWeight: '600', color: t.textMain, margin: '0 0 8px 0' }}>
+                Hello, {userFullName}
+              </h2>
+              <p style={{ color: t.textMuted, marginBottom: '2.5rem' }}>
+                How can I help you today?
+              </p>
+              
+              <div style={{ width: '100%', maxWidth: '800px' }}>
+                <InputBar 
+                  t={t} chatHistoryLength={chatHistory.length} userFullName={userFullName}
+                  uploadStatus={uploadStatus} file={file} setFile={setFile} setUploadStatus={setUploadStatus} handleFileSelect={handleFileSelect}
+                  handleChatSubmit={handleChatSubmit} query={query} setQuery={setQuery} apiKey={apiKey} loadingChat={loadingChat}
+                  mode={mode} setMode={setMode} showDropdown={showDropdown} setShowDropdown={setShowDropdown}
+                />
               </div>
-            )}
+            </div>
+          ) : (
+            /* STANDARD LAYOUT FOR ACTIVE CHAT */
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              
+              {attachedFiles.length > 0 && (
+                <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', padding: '0 1rem', display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1rem', boxSizing: 'border-box' }}>
+                  {attachedFiles.map((fileName, idx) => (
+                    <span key={idx} style={{ padding: '4px 10px', fontSize: '0.75rem', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '12px', color: t.textMuted }}>
+                      📄 {fileName}
+                    </span>
+                  ))}
+                </div>
+              )}
 
-            <ChatWindow 
-              t={t} chatHistory={chatHistory} 
-              loadingChat={loadingChat} chatEndRef={chatEndRef}
-            />
+              <ChatWindow 
+                t={t} chatHistory={chatHistory} 
+                loadingChat={loadingChat} chatEndRef={chatEndRef}
+              />
 
-            <InputBar 
-              t={t} chatHistoryLength={chatHistory.length} userFullName={userFullName}
-              uploadStatus={uploadStatus} file={file} setFile={setFile} setUploadStatus={setUploadStatus} handleFileSelect={handleFileSelect}
-              handleChatSubmit={handleChatSubmit} query={query} setQuery={setQuery} apiKey={apiKey} loadingChat={loadingChat}
-              mode={mode} setMode={setMode} showDropdown={showDropdown} setShowDropdown={setShowDropdown}
-            />
+              <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', padding: '0 1rem', paddingBottom: '1rem', boxSizing: 'border-box' }}>
+                <InputBar 
+                  t={t} chatHistoryLength={chatHistory.length} userFullName={userFullName}
+                  uploadStatus={uploadStatus} file={file} setFile={setFile} setUploadStatus={setUploadStatus} handleFileSelect={handleFileSelect}
+                  handleChatSubmit={handleChatSubmit} query={query} setQuery={setQuery} apiKey={apiKey} loadingChat={loadingChat}
+                  mode={mode} setMode={setMode} showDropdown={showDropdown} setShowDropdown={setShowDropdown}
+                />
+              </div>
 
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </>
