@@ -503,23 +503,14 @@ export default function App() {
 
          {chatHistory.length === 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', paddingBottom: '10vh' }}>
-              <div style={{ display: 'inline-flex', padding: '16px', borderRadius: '50%', backgroundColor: t.activeSidebarBg, marginBottom: '16px' }}>
-                <Bot size={32} color={t.accent} />
-              </div>
-              <h2 style={{ fontSize: '1.8rem', fontWeight: '600', color: t.textMain, margin: '0 0 8px 0' }}>
-                Hello, {userFullName}
-              </h2>
-              <p style={{ color: t.textMuted, marginBottom: '2.5rem' }}>
-                How can I help you today?
-              </p>
               
               <div style={{ width: '100%', maxWidth: '800px' }}>
                 
-                {/* Display attached files on the empty welcome screen */}
+                {/* Display attached files on the empty welcome screen (No duplicate greetings!) */}
                 {attachedFiles.length > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
                     {attachedFiles.map((fileName, idx) => (
-                      <span key={idx} style={{ padding: '4px 10px', fontSize: '0.75rem', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '12px', color: t.textMuted }}>
+                      <span key={idx} style={{ padding: '4px 10px', fontSize: '0.75rem', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '12px', color: t.textMuted, zIndex: 10 }}>
                         📄 {fileName}
                       </span>
                     ))}
