@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, Bot, Globe, Lock } from 'lucide-react';
+import { Menu, Globe, Lock } from 'lucide-react';
 import axios from 'axios';
 import { supabase } from './supabaseClient';
 import Login from './components/Login';
@@ -68,8 +68,6 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('workspace_theme') || 'dark');
   
   const [showDocumentManager, setShowDocumentManager] = useState(false);
-  
-  // NEW: State for Search Scope Toggle
   const [searchAllFiles, setSearchAllFiles] = useState(false); 
 
   const [sessions, setSessions] = useState([]);
@@ -331,7 +329,7 @@ export default function App() {
             hf_api_key: hfApiKey,
             mode: mode,
             active_files: attachedFiles,
-            search_all_files: searchAllFiles // PASSING SCOPE FLAG
+            search_all_files: searchAllFiles
           })
       });
 
@@ -340,7 +338,6 @@ export default function App() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
       let partialLine = '';
-      
       let finalAiContent = '';
 
       while (true) {
@@ -477,20 +474,10 @@ export default function App() {
             )}
           </div>
 
-         {chatHistory.length === 0 ? (
+          {chatHistory.length === 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', paddingBottom: '10vh' }}>
-              <div style={{ display: 'inline-flex', padding: '16px', borderRadius: '50%', backgroundColor: t.activeSidebarBg, marginBottom: '16px' }}>
-                <Bot size={32} color={t.accent} />
-              </div>
-              <h2 style={{ fontSize: '1.8rem', fontWeight: '600', color: t.textMain, margin: '0 0 8px 0' }}>
-                Hello, {userFullName}
-              </h2>
-              <p style={{ color: t.textMuted, marginBottom: '2.5rem' }}>
-                How can I help you today?
-              </p>
-              
               <div style={{ width: '100%', maxWidth: '800px' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
                   <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
                     {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
                   </button>
@@ -513,7 +500,6 @@ export default function App() {
               />
 
               <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', padding: '0 1rem', paddingBottom: '1rem', boxSizing: 'border-box' }}>
-                {/* NEW: Scope Toggle and File Chips for Active State */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {attachedFiles.map((fileName, idx) => (
