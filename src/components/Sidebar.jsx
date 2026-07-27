@@ -11,7 +11,7 @@ export default function Sidebar({
   hfApiKey, tempHfApiKey, setTempHfApiKey,
   handleSaveApiKey,
   userFullName, handleLogout,
-  setShowDocumentManager // New prop to toggle modal
+  setShowDocumentManager 
 }) {
   const [editingSessionId, setEditingSessionId] = useState(null);
   const [editTitle, setEditTitle] = useState("");
@@ -23,17 +23,16 @@ export default function Sidebar({
   };
 
   const saveEditing = async (e, sessionId) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
+    
     if (!editTitle.trim()) {
       setEditingSessionId(null);
       return;
     }
 
-    // Optimistic UI Update
     setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: editTitle } : s));
     setEditingSessionId(null);
 
-    // Persist to backend
     try {
       const backendUrl = "https://rag-app-6zlh.onrender.com";
       await axios.put(`${backendUrl}/api/sessions/${sessionId}`, { title: editTitle });
@@ -116,6 +115,7 @@ export default function Sidebar({
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && saveEditing(e, s.id)}
+                    onBlur={(e) => saveEditing(e, s.id)} // FIX: Closes input when clicking away
                     onClick={(e) => e.stopPropagation()}
                     style={{ flex: 1, background: t.inputBg, color: t.textMain, border: `1px solid ${t.accent}`, borderRadius: '4px', padding: '2px 4px', fontSize: '0.85rem', outline: 'none' }}
                   />
@@ -128,7 +128,7 @@ export default function Sidebar({
 
               <div style={{ display: 'flex', gap: '2px' }}>
                 {editingSessionId === s.id ? (
-                  <button onClick={(e) => saveEditing(e, s.id)} style={{ background: 'none', border: 'none', color: t.accent, cursor: 'pointer', padding: '4px' }}>
+                  <button onMouseDown={(e) => saveEditing(e, s.id)} style={{ background: 'none', border: 'none', color: t.accent, cursor: 'pointer', padding: '4px' }}>
                     <Check size={14} />
                   </button>
                 ) : (
