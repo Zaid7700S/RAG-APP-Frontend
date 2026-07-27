@@ -501,21 +501,10 @@ export default function App() {
             )}
           </div>
 
-         {chatHistory.length === 0 ? (
+        {chatHistory.length === 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', paddingBottom: '10vh' }}>
               
               <div style={{ width: '100%', maxWidth: '800px' }}>
-                
-                {/* Display attached files on the empty welcome screen (No duplicate greetings!) */}
-                {attachedFiles.length > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                    {attachedFiles.map((fileName, idx) => (
-                      <span key={idx} style={{ padding: '4px 10px', fontSize: '0.75rem', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '12px', color: t.textMuted, zIndex: 10 }}>
-                        📄 {fileName}
-                      </span>
-                    ))}
-                  </div>
-                )}
                 
                 <InputBar 
                   t={t} chatHistoryLength={chatHistory.length} userFullName={userFullName}
@@ -524,11 +513,25 @@ export default function App() {
                   mode={mode} setMode={setMode} showDropdown={showDropdown} setShowDropdown={setShowDropdown}
                 />
 
-                {/* Scope Toggle BELOW the Input Bar */}
-                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
+                {/* --- MOVED EVERYTHING BELOW THE INPUT BAR TO PREVENT OVERLAP --- */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', marginTop: '24px' }}>
+                  
+                  {/* Display attached files */}
+                  {attachedFiles.length > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      {attachedFiles.map((fileName, idx) => (
+                        <span key={idx} style={{ padding: '4px 10px', fontSize: '0.75rem', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '12px', color: t.textMuted }}>
+                          📄 {fileName}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Scope Toggle */}
                   <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
                     {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
                   </button>
+                  
                 </div>
 
               </div>
