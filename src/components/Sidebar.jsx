@@ -7,7 +7,7 @@ export default function Sidebar({
   sessions, activeSessionId, createNewSession, selectSession, deleteSession,
   showSettingsDrawer, setShowSettingsDrawer,
   apiKey, tempApiKey, setTempApiKey,
-  googleApiKey, tempGoogleApiKey, setTempGoogleApiKey,
+  hfApiKey, tempHfApiKey, setTempHfApiKey,
   handleSaveApiKey,
   userFullName, handleLogout
 }) {
@@ -98,9 +98,9 @@ export default function Sidebar({
               />
               <input 
                 type="password" 
-                value={tempGoogleApiKey} 
-                onChange={(e) => setTempGoogleApiKey(e.target.value)} 
-                placeholder="Google Key (AIza...)"
+                value={tempHfApiKey} 
+                onChange={(e) => setTempHfApiKey(e.target.value)} 
+                placeholder="Hugging Face Token (hf_...)"
                 style={{ width: '100%', padding: '8px', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '8px', color: t.textMain, fontSize: '0.85rem', boxSizing: 'border-box', marginBottom: '10px', outline: 'none' }}
               />
               <button type="submit" style={{ width: '100%', padding: '8px', background: t.accent, color: t.accentText, border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
@@ -112,14 +112,14 @@ export default function Sidebar({
               <div 
                 onClick={() => { 
                   setTempApiKey(apiKey); 
-                  setTempGoogleApiKey(googleApiKey);
+                  setTempHfApiKey(hfApiKey);
                   setShowSettingsDrawer(true); 
                 }}
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', borderRadius: '12px', cursor: 'pointer', color: t.textMuted, backgroundColor: t.inputBg, border: `1px solid ${t.borderDark}` }}
               >
-                <Key size={16} color={(apiKey && googleApiKey) ? '#34d399' : t.danger} />
+                <Key size={16} color={(apiKey && hfApiKey) ? '#34d399' : t.danger} />
                 <span style={{ fontSize: '0.8rem', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {(apiKey && googleApiKey) ? 'APIs Configured' : 'Set API Keys'}
+                  {(apiKey && hfApiKey) ? 'APIs Configured' : 'Set API Keys'}
                 </span>
               </div>
 
