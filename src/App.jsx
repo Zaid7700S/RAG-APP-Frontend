@@ -477,11 +477,6 @@ export default function App() {
           {chatHistory.length === 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', paddingBottom: '10vh' }}>
               <div style={{ width: '100%', maxWidth: '800px' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-                  <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
-                    {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
-                  </button>
-                </div>
                 
                 <InputBar 
                   t={t} chatHistoryLength={chatHistory.length} userFullName={userFullName}
@@ -489,6 +484,14 @@ export default function App() {
                   handleChatSubmit={handleChatSubmit} query={query} setQuery={setQuery} apiKey={apiKey} loadingChat={loadingChat}
                   mode={mode} setMode={setMode} showDropdown={showDropdown} setShowDropdown={setShowDropdown}
                 />
+
+                {/* Moved Scope Toggle BELOW the Input Bar */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
+                  <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
+                    {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
+                  </button>
+                </div>
+
               </div>
             </div>
           ) : (
