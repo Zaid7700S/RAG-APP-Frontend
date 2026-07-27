@@ -23,7 +23,7 @@ export default function InputBar({
         {uploadStatus && (
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: t.inputBg, border: `1px solid ${t.borderDark}`, padding: '6px 14px', borderRadius: '16px', fontSize: '0.8rem', marginBottom: '12px', color: t.textMuted }}>
             <Paperclip size={14} />
-            <span style={{ maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{uploadStatus}</span>
+            <span style={{ maxWidth: '350px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{uploadStatus}</span>
             {file && <X size={14} style={{ cursor: 'pointer', marginLeft: '5px' }} onClick={() => { setFile(null); setUploadStatus(''); }} />}
           </div>
         )}
