@@ -1,40 +1,32 @@
 import React from 'react';
-import { User, Bot, FileText, Activity } from 'lucide-react';
+import { User, Bot, FileText } from 'lucide-react';
 
 export default function ChatWindow({ t, chatHistory, loadingChat, chatEndRef }) {
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       
-      {chatHistory.length === 0 ? (
-        <div style={{ margin: 'auto', textAlign: 'center', color: t.textMuted, maxWidth: '400px' }}>
-          <div style={{ display: 'inline-flex', padding: '16px', borderRadius: '50%', backgroundColor: t.activeSidebarBg, marginBottom: '16px' }}>
-            <Activity size={32} color={t.accent} />
-          </div>
-          <h2 style={{ fontSize: '1.2rem', marginBottom: '8px', color: t.textMain }}>How can I help you today?</h2>
-          <p style={{ fontSize: '0.9rem', lineHeight: '1.5' }}>Upload a document to analyze it, or just ask me a general question.</p>
-        </div>
-      ) : (
-        chatHistory.map((msg, index) => (
+      {/* Centralized Message Column */}
+      <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        
+        {chatHistory.map((msg, index) => (
           <div key={index} style={{ 
             display: 'flex', 
             flexDirection: msg.role === 'user' ? 'row-reverse' : 'row', 
-            gap: '12px', 
+            gap: '16px', 
             alignItems: 'flex-start',
-            maxWidth: '850px',
-            margin: msg.role === 'user' ? '0 0 0 auto' : '0 auto 0 0',
             width: '100%'
           }}>
             <div style={{ 
-              width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               backgroundColor: msg.role === 'user' ? t.accent : t.activeSidebarBg,
               color: msg.role === 'user' ? t.accentText : t.textMain
             }}>
-              {msg.role === 'user' ? <User size={18} /> : <Bot size={18} />}
+              {msg.role === 'user' ? <User size={20} /> : <Bot size={20} />}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: 'calc(100% - 44px)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '80%' }}>
               <div style={{ 
-                padding: '12px 16px', 
+                padding: '12px 18px', 
                 borderRadius: '16px', 
                 backgroundColor: msg.role === 'user' ? t.userMsgBg : 'transparent',
                 border: msg.role === 'user' ? 'none' : `1px solid ${t.border}`,
@@ -46,15 +38,12 @@ export default function ChatWindow({ t, chatHistory, loadingChat, chatEndRef }) 
               }}>
                 {msg.content}
                 
-                {/* Typing Indicator inside AI bubble if streaming hasn't yielded text yet */}
+                {/* Typing Indicator */}
                 {msg.role === 'ai' && !msg.content && loadingChat && (
                   <div style={{ display: 'flex', gap: '4px', alignItems: 'center', height: '24px' }}>
                      <style>
                       {`
-                        @keyframes bounce { 
-                          0%, 100% { transform: translateY(0); opacity: 0.4; } 
-                          50% { transform: translateY(-4px); opacity: 1; } 
-                        }
+                        @keyframes bounce { 0%, 100% { transform: translateY(0); opacity: 0.4; } 50% { transform: translateY(-4px); opacity: 1; } }
                         .dot { width: 6px; height: 6px; background-color: ${t.textMuted}; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
                         .dot1 { animation-delay: -0.32s; }
                         .dot2 { animation-delay: -0.16s; }
@@ -69,7 +58,7 @@ export default function ChatWindow({ t, chatHistory, loadingChat, chatEndRef }) 
 
               {msg.sources && msg.sources.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: t.textMuted, textTransform: 'uppercase' }}>Sources Identified</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: t.textMuted, textTransform: 'uppercase' }}>Sources</span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                     {msg.sources.map((src, idx) => (
                       <div key={idx} title={`Confidence: ${src.confidence_score}`} style={{ 
@@ -86,9 +75,12 @@ export default function ChatWindow({ t, chatHistory, loadingChat, chatEndRef }) 
               )}
             </div>
           </div>
-        ))
-      )}
-      <div ref={chatEndRef} />
+        ))}
+        
+        {/* Invisible div to scroll to bottom */}
+        <div ref={chatEndRef} />
+      </div>
+      
     </div>
   );
 }
