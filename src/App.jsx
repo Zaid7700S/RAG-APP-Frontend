@@ -6,6 +6,7 @@ import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import ChatWindow from './components/ChatWindow';
 import InputBar from './components/InputBar';
+import DocumentManager from './components/DocumentManager';
 
 const themeColors = {
   dark: {
@@ -76,6 +77,8 @@ export default function App() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
   const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
+
+  const [showDocumentManager, setShowDocumentManager] = useState(false);
   
   const [file, setFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState('');
@@ -431,22 +434,32 @@ export default function App() {
         `}
       </style>
 
+      {showDocumentManager && (
+        <DocumentManager
+          onClose={() => setShowDocumentManager(false)}
+          session={session}
+          t={t}
+        />
+      )}
+
       {isMobile && isSidebarOpen && (
         <div onClick={() => setIsSidebarOpen(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: t.backdrop, zIndex: 90, transition: 'opacity 0.3s' }} />
       )}
 
       <div style={{ display: 'flex', height: '100vh', width: '100vw', background: t.bgMain, color: t.textMain, fontFamily: 'system-ui, sans-serif', overflow: 'hidden', transition: 'background 0.3s ease' }}>
         
-        <Sidebar 
-          isMobile={isMobile} isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
-          theme={theme} setTheme={setTheme} t={t}
-          sessions={sessions} activeSessionId={activeSessionId} createNewSession={createNewSession} selectSession={selectSession} deleteSession={deleteSession}
-          showSettingsDrawer={showSettingsDrawer} setShowSettingsDrawer={setShowSettingsDrawer}
-          apiKey={apiKey} tempApiKey={tempApiKey} setTempApiKey={setTempApiKey} 
-          hfApiKey={hfApiKey} tempHfApiKey={tempHfApiKey} setTempHfApiKey={setTempHfApiKey}
-          handleSaveApiKey={handleSaveApiKey}
-          userFullName={userFullName} handleLogout={handleLogout}
-        />
+       <Sidebar
+        isMobile={isMobile} isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
+        theme={theme} setTheme={setTheme} t={t}
+        sessions={sessions} activeSessionId={activeSessionId} createNewSession={createNewSession} selectSession={selectSession} deleteSession={deleteSession}
+        showSettingsDrawer={showSettingsDrawer} setShowSettingsDrawer={setShowSettingsDrawer}
+        showDocumentManager={showDocumentManager}
+        setShowDocumentManager={setShowDocumentManager}
+        apiKey={apiKey} tempApiKey={tempApiKey} setTempApiKey={setTempApiKey}
+        hfApiKey={hfApiKey} tempHfApiKey={tempHfApiKey} setTempHfApiKey={setTempHfApiKey}
+        handleSaveApiKey={handleSaveApiKey}
+        userFullName={userFullName} handleLogout={handleLogout}
+      />
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', height: '100%', boxSizing: 'border-box', minWidth: 0 }}>
           
