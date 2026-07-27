@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, Bot, Globe, Lock } from 'lucide-react';
 import axios from 'axios';
 import { supabase } from './supabaseClient';
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import ChatWindow from './components/ChatWindow';
 import InputBar from './components/InputBar';
-import DocumentManager from './components/DocumentManager'; // FIX: Imported the Document Manager
+import DocumentManager from './components/DocumentManager';
 
 const themeColors = {
   dark: {
@@ -67,8 +67,10 @@ export default function App() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('workspace_theme') || 'dark');
   
-  // FIX: Added State for Document Manager
   const [showDocumentManager, setShowDocumentManager] = useState(false);
+  
+  // NEW: State for Search Scope Toggle
+  const [searchAllFiles, setSearchAllFiles] = useState(false); 
 
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
@@ -327,7 +329,9 @@ export default function App() {
             query: userQuery, 
             api_key: apiKey, 
             hf_api_key: hfApiKey,
-            mode: mode
+            mode: mode,
+            active_files: attachedFiles,
+            search_all_files: searchAllFiles // PASSING SCOPE FLAG
           })
       });
 
@@ -434,7 +438,6 @@ export default function App() {
         `}
       </style>
 
-      {/* FIX: Render the Document Manager Modal if state is true */}
       {showDocumentManager && (
         <DocumentManager 
           t={t} 
@@ -458,10 +461,8 @@ export default function App() {
           hfApiKey={hfApiKey} tempHfApiKey={tempHfApiKey} setTempHfApiKey={setTempHfApiKey}
           handleSaveApiKey={handleSaveApiKey}
           userFullName={userFullName} handleLogout={handleLogout}
-          setShowDocumentManager={setShowDocumentManager} // FIX: Pass setter to Sidebar
+          setShowDocumentManager={setShowDocumentManager} 
         />
-
-        {/* Replace everything from `<div style={{ flex: 1, display: 'flex', flexDirection: 'column'...` down to the closing `</div>` of the App */}
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', height: '100%', boxSizing: 'border-box', minWidth: 0 }}>
           
@@ -477,8 +478,10 @@ export default function App() {
           </div>
 
           {chatHistory.length === 0 ? (
-            /* EXACT CENTER LAYOUT FOR EMPTY CHAT */
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', paddingBottom: '10vh' }}>
+              <div style={{ display: 'inline-flex', padding: '16px', borderRadius: '50%', backgroundColor: t.activeSidebarBg, marginBottom: '16px' }}>
+                <Bot size={32} color={t.accent} />
+              </div>
               <h2 style={{ fontSize: '1.8rem', fontWeight: '600', color: t.textMain, margin: '0 0 8px 0' }}>
                 Hello, {userFullName}
               </h2>
@@ -487,6 +490,13 @@ export default function App() {
               </p>
               
               <div style={{ width: '100%', maxWidth: '800px' }}>
+                {/* NEW: Scope Toggle for Empty State */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                  <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
+                    {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
+                  </button>
+                </div>
+                
                 <InputBar 
                   t={t} chatHistoryLength={chatHistory.length} userFullName={userFullName}
                   uploadStatus={uploadStatus} file={file} setFile={setFile} setUploadStatus={setUploadStatus} handleFileSelect={handleFileSelect}
@@ -496,25 +506,29 @@ export default function App() {
               </div>
             </div>
           ) : (
-            /* STANDARD LAYOUT FOR ACTIVE CHAT */
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               
-              {attachedFiles.length > 0 && (
-                <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', padding: '0 1rem', display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1rem', boxSizing: 'border-box' }}>
-                  {attachedFiles.map((fileName, idx) => (
-                    <span key={idx} style={{ padding: '4px 10px', fontSize: '0.75rem', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '12px', color: t.textMuted }}>
-                      📄 {fileName}
-                    </span>
-                  ))}
-                </div>
-              )}
-
               <ChatWindow 
                 t={t} chatHistory={chatHistory} 
                 loadingChat={loadingChat} chatEndRef={chatEndRef}
               />
 
               <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', padding: '0 1rem', paddingBottom: '1rem', boxSizing: 'border-box' }}>
+                {/* NEW: Scope Toggle and File Chips for Active State */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {attachedFiles.map((fileName, idx) => (
+                      <span key={idx} style={{ padding: '4px 10px', fontSize: '0.75rem', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '12px', color: t.textMuted }}>
+                        📄 {fileName}
+                      </span>
+                    ))}
+                  </div>
+                  
+                  <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
+                    {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
+                  </button>
+                </div>
+
                 <InputBar 
                   t={t} chatHistoryLength={chatHistory.length} userFullName={userFullName}
                   uploadStatus={uploadStatus} file={file} setFile={setFile} setUploadStatus={setUploadStatus} handleFileSelect={handleFileSelect}
