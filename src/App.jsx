@@ -59,8 +59,8 @@ export default function App() {
   const [apiKey, setApiKey] = useState('');
   const [tempApiKey, setTempApiKey] = useState('');
   
-  const [googleApiKey, setGoogleApiKey] = useState('');
-  const [tempGoogleApiKey, setTempGoogleApiKey] = useState('');
+  const [hfApiKey, setHfApiKey] = useState('');
+  const [tempHfApiKey, setTempHfApiKey] = useState('');
 
   const [mode, setMode] = useState('Auto');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -116,8 +116,8 @@ export default function App() {
     if (activeUser.user_metadata?.groq_api_key) {
       setApiKey(activeUser.user_metadata.groq_api_key);
     }
-    if (activeUser.user_metadata?.google_api_key) {
-      setGoogleApiKey(activeUser.user_metadata.google_api_key);
+    if (activeUser.user_metadata?.hf_api_key) {
+      setHfApiKey(activeUser.user_metadata.hf_api_key);
     }
     
     const { data, error } = await supabase
@@ -155,12 +155,12 @@ export default function App() {
       const { error } = await supabase.auth.updateUser({ 
         data: { 
           groq_api_key: tempApiKey,
-          google_api_key: tempGoogleApiKey 
+          hf_api_key: tempHfApiKey 
         } 
       });
       if (error) throw error;
       setApiKey(tempApiKey);
-      setGoogleApiKey(tempGoogleApiKey);
+      setHfApiKey(tempHfApiKey);
       setShowSettingsDrawer(false);
     } catch (error) {
       alert("Failed to securely save API keys to cloud.");
@@ -169,7 +169,7 @@ export default function App() {
 
   const handleLogout = async () => {
     setApiKey('');
-    setGoogleApiKey('');
+    setHfApiKey('');
     setIsAppReady(false);
     await supabase.auth.signOut();
   };
@@ -239,7 +239,7 @@ export default function App() {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('user_id', `${session.user.id}_${activeSessionId}`);
-      formData.append('google_api_key', googleApiKey);
+      formData.append('hf_api_key', hfApiKey);
 
       try {
         const backendUrl = "https://rag-app-6zlh.onrender.com"; 
@@ -311,7 +311,7 @@ export default function App() {
         session_id: `${session.user.id}_${activeSessionId}`,
         query: userQuery, 
         api_key: apiKey, 
-        google_api_key: googleApiKey,
+        hf_api_key: hfApiKey,
         mode: mode
       });
       
@@ -380,7 +380,7 @@ export default function App() {
           sessions={sessions} activeSessionId={activeSessionId} createNewSession={createNewSession} selectSession={selectSession} deleteSession={deleteSession}
           showSettingsDrawer={showSettingsDrawer} setShowSettingsDrawer={setShowSettingsDrawer}
           apiKey={apiKey} tempApiKey={tempApiKey} setTempApiKey={setTempApiKey} 
-          googleApiKey={googleApiKey} tempGoogleApiKey={tempGoogleApiKey} setTempGoogleApiKey={setTempGoogleApiKey}
+          hfApiKey={hfApiKey} tempHfApiKey={tempHfApiKey} setTempHfApiKey={setTempHfApiKey}
           handleSaveApiKey={handleSaveApiKey}
           userFullName={userFullName} handleLogout={handleLogout}
         />
