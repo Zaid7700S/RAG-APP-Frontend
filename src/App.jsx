@@ -6,7 +6,7 @@ import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import ChatWindow from './components/ChatWindow';
 import InputBar from './components/InputBar';
-import DocumentManager from './components/DocumentManager';
+import DocumentManager from './components/DocumentManager'; // FIX: Imported the Document Manager
 
 const themeColors = {
   dark: {
@@ -67,7 +67,9 @@ export default function App() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('workspace_theme') || 'dark');
   
-  // Cloud synced sessions
+  // FIX: Added State for Document Manager
+  const [showDocumentManager, setShowDocumentManager] = useState(false);
+
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   
@@ -77,8 +79,6 @@ export default function App() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
   const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
-
-  const [showDocumentManager, setShowDocumentManager] = useState(false);
   
   const [file, setFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState('');
@@ -241,9 +241,9 @@ export default function App() {
     for (const selectedFile of selectedFiles) {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('user_id', session.user.id); // Fixed: Clean user_id decoupling
+      formData.append('user_id', session.user.id); 
       formData.append('hf_api_key', hfApiKey);
-      formData.append('groq_api_key', apiKey); // Required for automated document summarization
+      formData.append('groq_api_key', apiKey); 
 
       try {
         const backendUrl = "https://rag-app-6zlh.onrender.com"; 
@@ -434,11 +434,12 @@ export default function App() {
         `}
       </style>
 
+      {/* FIX: Render the Document Manager Modal if state is true */}
       {showDocumentManager && (
-        <DocumentManager
-          onClose={() => setShowDocumentManager(false)}
-          session={session}
-          t={t}
+        <DocumentManager 
+          t={t} 
+          session={session} 
+          onClose={() => setShowDocumentManager(false)} 
         />
       )}
 
@@ -448,18 +449,17 @@ export default function App() {
 
       <div style={{ display: 'flex', height: '100vh', width: '100vw', background: t.bgMain, color: t.textMain, fontFamily: 'system-ui, sans-serif', overflow: 'hidden', transition: 'background 0.3s ease' }}>
         
-       <Sidebar
-        isMobile={isMobile} isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
-        theme={theme} setTheme={setTheme} t={t}
-        sessions={sessions} activeSessionId={activeSessionId} createNewSession={createNewSession} selectSession={selectSession} deleteSession={deleteSession}
-        showSettingsDrawer={showSettingsDrawer} setShowSettingsDrawer={setShowSettingsDrawer}
-        showDocumentManager={showDocumentManager}
-        setShowDocumentManager={setShowDocumentManager}
-        apiKey={apiKey} tempApiKey={tempApiKey} setTempApiKey={setTempApiKey}
-        hfApiKey={hfApiKey} tempHfApiKey={tempHfApiKey} setTempHfApiKey={setTempHfApiKey}
-        handleSaveApiKey={handleSaveApiKey}
-        userFullName={userFullName} handleLogout={handleLogout}
-      />
+        <Sidebar 
+          isMobile={isMobile} isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
+          theme={theme} setTheme={setTheme} t={t}
+          sessions={sessions} setSessions={setSessions} activeSessionId={activeSessionId} createNewSession={createNewSession} selectSession={selectSession} deleteSession={deleteSession}
+          showSettingsDrawer={showSettingsDrawer} setShowSettingsDrawer={setShowSettingsDrawer}
+          apiKey={apiKey} tempApiKey={tempApiKey} setTempApiKey={setTempApiKey} 
+          hfApiKey={hfApiKey} tempHfApiKey={tempHfApiKey} setTempHfApiKey={setTempHfApiKey}
+          handleSaveApiKey={handleSaveApiKey}
+          userFullName={userFullName} handleLogout={handleLogout}
+          setShowDocumentManager={setShowDocumentManager} // FIX: Pass setter to Sidebar
+        />
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', height: '100%', boxSizing: 'border-box', minWidth: 0 }}>
           
