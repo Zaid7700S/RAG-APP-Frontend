@@ -238,8 +238,9 @@ export default function App() {
     for (const selectedFile of selectedFiles) {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('user_id', `${session.user.id}_${activeSessionId}`);
+      formData.append('user_id', session.user.id); // Fixed: Clean user_id decoupling
       formData.append('hf_api_key', hfApiKey);
+      formData.append('groq_api_key', apiKey); // Required for automated document summarization
 
       try {
         const backendUrl = "https://rag-app-6zlh.onrender.com"; 
@@ -253,7 +254,7 @@ export default function App() {
     }
 
     if (uploadedFileNames.length > 0) {
-      setUploadStatus(`Attached ${uploadedFileNames.length} file(s)`);
+      setUploadStatus(`Queued ${uploadedFileNames.length} file(s) for background processing`);
       
       let updatedSessionForDB = null;
       setSessions(prev => prev.map(s => {
@@ -278,7 +279,7 @@ export default function App() {
     }
   };
 
-const handleChatSubmit = async (e) => {
+  const handleChatSubmit = async (e) => {
     e.preventDefault();
     if (!query.trim() || !apiKey) return;
 
@@ -287,9 +288,8 @@ const handleChatSubmit = async (e) => {
     setLoadingChat(true);
 
     const userMessage = { role: 'user', content: userQuery };
-    const tempAiMessageId = Date.now(); // Unique ID for streaming message updates
+    const tempAiMessageId = Date.now();
 
-    // 1. Add User Message and an Empty AI Message placeholder to UI
     let updatedSessionForDB = null;
     setSessions(prevSessions => prevSessions.map(s => {
       if (s.id === activeSessionId) {
@@ -306,7 +306,6 @@ const handleChatSubmit = async (e) => {
     }));
 
     if (session?.user?.id && updatedSessionForDB) {
-        // Sync user message header to cloud (exclude the incomplete AI chunk)
         supabase.from('workspace_sessions').upsert({
             id: updatedSessionForDB.id, user_id: session.user.id, title: updatedSessionForDB.title, 
             history: updatedSessionForDB.history.slice(0, -1), files: updatedSessionForDB.files, updated_at: new Date().toISOString()
@@ -316,7 +315,6 @@ const handleChatSubmit = async (e) => {
     try {
       const backendUrl = "https://rag-app-6zlh.onrender.com";
       
-      // 2. Fetch using native API for streaming (Replaces Axios)
       const response = await fetch(backendUrl + '/chat/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -332,30 +330,25 @@ const handleChatSubmit = async (e) => {
 
       if (!response.ok) throw new Error(`Server returned ${response.status}`);
 
-      // 3. Setup Stream Reader
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
       let partialLine = '';
       
       let finalAiContent = '';
-      let finalAiSources = [];
 
-      // 4. Read the incoming text chunks dynamically
       while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           
           partialLine += decoder.decode(value, { stream: true });
           const lines = partialLine.split('\n');
-          partialLine = lines.pop(); // Keep the last incomplete line for next loop
+          partialLine = lines.pop();
           
           for (const line of lines) {
               if (!line.trim()) continue;
               const data = JSON.parse(line);
               
               if (data.type === 'metadata') {
-                  finalAiSources = data.sources;
-                  // Update UI with metadata immediately
                   setSessions(prev => prev.map(s => {
                       if (s.id === activeSessionId) {
                           const newHistory = [...s.history];
@@ -368,7 +361,6 @@ const handleChatSubmit = async (e) => {
               } 
               else if (data.type === 'token') {
                   finalAiContent += data.content;
-                  // Live Update Text UI
                   setSessions(prev => prev.map(s => {
                       if (s.id === activeSessionId) {
                           const newHistory = [...s.history];
@@ -382,12 +374,10 @@ const handleChatSubmit = async (e) => {
           }
       }
 
-      // 5. Finalize and Sync to Cloud Storage
       setSessions(prev => {
           const updated = prev.map(s => {
               if (s.id === activeSessionId) {
                   const finalSession = { ...s };
-                  // Clean up internal temp id for cloud storage
                   const cleanHistory = finalSession.history.map(m => {
                       const { _streamId, ...rest } = m;
                       return rest;
@@ -403,7 +393,6 @@ const handleChatSubmit = async (e) => {
       });
 
     } catch (error) {
-      // Error Fallback
       setSessions(prevSessions => prevSessions.map(s => {
         if (s.id === activeSessionId) {
           const newHistory = [...s.history];
@@ -474,7 +463,6 @@ const handleChatSubmit = async (e) => {
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: chatHistory.length === 0 ? 'center' : 'space-between', boxSizing: 'border-box', overflow: 'hidden' }}>
             
-            {/* Display Attached Files Header */}
             {attachedFiles.length > 0 && (
               <div style={{ width: '100%', maxWidth: '850px', margin: '0 auto', padding: '0 1rem', display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1rem', boxSizing: 'border-box' }}>
                 {attachedFiles.map((fileName, idx) => (
