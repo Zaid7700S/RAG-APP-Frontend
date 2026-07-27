@@ -58,6 +58,10 @@ export default function App() {
   
   const [apiKey, setApiKey] = useState('');
   const [tempApiKey, setTempApiKey] = useState('');
+  
+  const [googleApiKey, setGoogleApiKey] = useState('');
+  const [tempGoogleApiKey, setTempGoogleApiKey] = useState('');
+
   const [mode, setMode] = useState('Auto');
   const [showDropdown, setShowDropdown] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('workspace_theme') || 'dark');
@@ -79,7 +83,6 @@ export default function App() {
   const chatEndRef = useRef(null);
   const t = themeColors[theme];
 
-  // CLOUD INITIALIZATION
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -107,16 +110,16 @@ export default function App() {
   }, []);
 
    const initializeUserData = async (user) => {
-    // 1. FORCE CLOUD FETCH: Bypasses the local browser cache so API key syncs across devices instantly
     const { data: { user: freshUser } } = await supabase.auth.getUser();
     const activeUser = freshUser || user;
 
-    // 2. Load API Key from the freshly fetched cloud data
     if (activeUser.user_metadata?.groq_api_key) {
       setApiKey(activeUser.user_metadata.groq_api_key);
     }
+    if (activeUser.user_metadata?.google_api_key) {
+      setGoogleApiKey(activeUser.user_metadata.google_api_key);
+    }
     
-    // 3. Fetch Sessions from Cloud
     const { data, error } = await supabase
       .from('workspace_sessions')
       .select('*')
@@ -127,13 +130,12 @@ export default function App() {
       setSessions(data);
       setActiveSessionId(data[0].id);
     } else {
-      // Create first session in cloud if empty
       const newId = `session_${Date.now()}`;
-      const newSession = { id: newId, title: 'New Session', history: [] };
+      const newSession = { id: newId, title: 'New Session', history: [], files: [] };
       setSessions([newSession]);
       setActiveSessionId(newId);
       await supabase.from('workspace_sessions').insert({
-        id: newId, user_id: activeUser.id, title: newSession.title, history: newSession.history
+        id: newId, user_id: activeUser.id, title: newSession.title, history: newSession.history, files: newSession.files
       });
     }
     setIsAppReady(true);
@@ -150,23 +152,31 @@ export default function App() {
   const handleSaveApiKey = async (e) => {
     e.preventDefault();
     try {
-      const { error } = await supabase.auth.updateUser({ data: { groq_api_key: tempApiKey } });
+      const { error } = await supabase.auth.updateUser({ 
+        data: { 
+          groq_api_key: tempApiKey,
+          google_api_key: tempGoogleApiKey 
+        } 
+      });
       if (error) throw error;
       setApiKey(tempApiKey);
+      setGoogleApiKey(tempGoogleApiKey);
       setShowSettingsDrawer(false);
     } catch (error) {
-      alert("Failed to securely save API key to cloud.");
+      alert("Failed to securely save API keys to cloud.");
     }
   };
 
   const handleLogout = async () => {
     setApiKey('');
+    setGoogleApiKey('');
     setIsAppReady(false);
     await supabase.auth.signOut();
   };
 
-  const currentSession = sessions.find(s => s.id === activeSessionId) || { history: [] };
+  const currentSession = sessions.find(s => s.id === activeSessionId) || { history: [], files: [] };
   const chatHistory = currentSession.history || [];
+  const attachedFiles = currentSession.files || [];
 
   const createNewSession = async () => {
     if (sessions.length > 0 && sessions[0].history.length === 0) {
@@ -176,7 +186,7 @@ export default function App() {
     }
     
     const newId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const newSession = { id: newId, title: 'New Session', history: [] };
+    const newSession = { id: newId, title: 'New Session', history: [], files: [] };
     
     setSessions(prev => [newSession, ...prev]);
     setActiveSessionId(newId);
@@ -184,7 +194,7 @@ export default function App() {
 
     if (session?.user?.id) {
       await supabase.from('workspace_sessions').insert({
-        id: newId, user_id: session.user.id, title: newSession.title, history: newSession.history
+        id: newId, user_id: session.user.id, title: newSession.title, history: newSession.history, files: newSession.files
       });
     }
   };
@@ -200,12 +210,12 @@ export default function App() {
     
     if (newSessions.length === 0) {
       const newId = `session_${Date.now()}`;
-      const newSession = { id: newId, title: 'New Session', history: [] };
+      const newSession = { id: newId, title: 'New Session', history: [], files: [] };
       setSessions([newSession]);
       setActiveSessionId(newId);
       if (session?.user?.id) {
         await supabase.from('workspace_sessions').insert({
-          id: newId, user_id: session.user.id, title: newSession.title, history: newSession.history
+          id: newId, user_id: session.user.id, title: newSession.title, history: newSession.history, files: newSession.files
         });
       }
     } else {
@@ -219,24 +229,52 @@ export default function App() {
   };
 
   const handleFileSelect = async (e) => {
-    const selectedFile = e.target.files[0];
-    if (!selectedFile) return;
-    setFile(selectedFile);
-    setUploadStatus('Uploading...');
+    const selectedFiles = Array.from(e.target.files);
+    if (selectedFiles.length === 0) return;
     
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('user_id', `${session.user.id}_${activeSessionId}`);
+    setUploadStatus(`Uploading ${selectedFiles.length} file(s)...`);
+    const uploadedFileNames = [];
+    
+    for (const selectedFile of selectedFiles) {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('user_id', `${session.user.id}_${activeSessionId}`);
+      formData.append('google_api_key', googleApiKey);
 
-    try {
-      const backendUrl = "https://rag-app-6zlh.onrender.com"; 
-      await axios.post(backendUrl + '/upload/', formData, { 
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setUploadStatus('Attached: ' + selectedFile.name);
-    } catch (error) {
-      setUploadStatus(`Error: ${error.response?.data?.detail || error.message}`);
-      setFile(null);
+      try {
+        const backendUrl = "https://rag-app-6zlh.onrender.com"; 
+        await axios.post(backendUrl + '/upload/', formData, { 
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        uploadedFileNames.push(selectedFile.name);
+      } catch (error) {
+        setUploadStatus(`Error on ${selectedFile.name}: ${error.response?.data?.detail || error.message}`);
+      }
+    }
+
+    if (uploadedFileNames.length > 0) {
+      setUploadStatus(`Attached ${uploadedFileNames.length} file(s)`);
+      
+      let updatedSessionForDB = null;
+      setSessions(prev => prev.map(s => {
+        if (s.id === activeSessionId) {
+          const updatedSession = { ...s, files: [...(s.files || []), ...uploadedFileNames] };
+          updatedSessionForDB = updatedSession;
+          return updatedSession;
+        }
+        return s;
+      }));
+
+      if (session?.user?.id && updatedSessionForDB) {
+        supabase.from('workspace_sessions').upsert({
+          id: updatedSessionForDB.id, 
+          user_id: session.user.id, 
+          title: updatedSessionForDB.title, 
+          history: updatedSessionForDB.history,
+          files: updatedSessionForDB.files,
+          updated_at: new Date().toISOString()
+        }).then();
+      }
     }
   };
 
@@ -255,16 +293,15 @@ export default function App() {
       if (s.id === activeSessionId) {
         const newTitle = s.history.length === 0 ? (userQuery.slice(0, 22) + '...') : s.title;
         const updatedSession = { ...s, title: newTitle, history: [...s.history, userMessage] };
-        updatedSessionForDB = updatedSession; // Capture for sync
+        updatedSessionForDB = updatedSession;
         return updatedSession;
       }
       return s;
     }));
 
-    // Cloud Sync User Message
     if (session?.user?.id && updatedSessionForDB) {
       supabase.from('workspace_sessions').upsert({
-        id: updatedSessionForDB.id, user_id: session.user.id, title: updatedSessionForDB.title, history: updatedSessionForDB.history, updated_at: new Date().toISOString()
+        id: updatedSessionForDB.id, user_id: session.user.id, title: updatedSessionForDB.title, history: updatedSessionForDB.history, files: updatedSessionForDB.files, updated_at: new Date().toISOString()
       }).then();
     }
 
@@ -272,7 +309,10 @@ export default function App() {
       const backendUrl = "https://rag-app-6zlh.onrender.com";
       const response = await axios.post(backendUrl + '/chat/', {
         session_id: `${session.user.id}_${activeSessionId}`,
-        query: userQuery, api_key: apiKey, mode: mode
+        query: userQuery, 
+        api_key: apiKey, 
+        google_api_key: googleApiKey,
+        mode: mode
       });
       
       const aiMessage = { role: 'ai', content: response.data.answer, intent: response.data.intent, sources: response.data.sources };
@@ -280,9 +320,8 @@ export default function App() {
       setSessions(prevSessions => prevSessions.map(s => {
         if (s.id === activeSessionId) {
           const finalSession = { ...s, history: [...s.history, aiMessage] };
-          // Cloud Sync AI Message
           supabase.from('workspace_sessions').upsert({
-            id: finalSession.id, user_id: session.user.id, title: finalSession.title, history: finalSession.history, updated_at: new Date().toISOString()
+            id: finalSession.id, user_id: session.user.id, title: finalSession.title, history: finalSession.history, files: finalSession.files, updated_at: new Date().toISOString()
           }).then();
           return finalSession;
         }
@@ -294,7 +333,7 @@ export default function App() {
         if (s.id === activeSessionId) {
           const finalSession = { ...s, history: [...s.history, errorMessage] };
           supabase.from('workspace_sessions').upsert({
-            id: finalSession.id, user_id: session.user.id, title: finalSession.title, history: finalSession.history, updated_at: new Date().toISOString()
+            id: finalSession.id, user_id: session.user.id, title: finalSession.title, history: finalSession.history, files: finalSession.files, updated_at: new Date().toISOString()
           }).then();
           return finalSession;
         }
@@ -309,7 +348,6 @@ export default function App() {
 
   if (!session) return <Login />;
   
-  // Loading Screen while fetching cloud data
   if (!isAppReady) return (
     <div style={{ height: '100vh', width: '100vw', background: t.bgMain, display: 'flex', justifyContent: 'center', alignItems: 'center', color: t.textMain, fontFamily: 'system-ui, sans-serif' }}>
       Fetching cloud workspace...
@@ -341,7 +379,9 @@ export default function App() {
           theme={theme} setTheme={setTheme} t={t}
           sessions={sessions} activeSessionId={activeSessionId} createNewSession={createNewSession} selectSession={selectSession} deleteSession={deleteSession}
           showSettingsDrawer={showSettingsDrawer} setShowSettingsDrawer={setShowSettingsDrawer}
-          apiKey={apiKey} tempApiKey={tempApiKey} setTempApiKey={setTempApiKey} handleSaveApiKey={handleSaveApiKey}
+          apiKey={apiKey} tempApiKey={tempApiKey} setTempApiKey={setTempApiKey} 
+          googleApiKey={googleApiKey} tempGoogleApiKey={tempGoogleApiKey} setTempGoogleApiKey={setTempGoogleApiKey}
+          handleSaveApiKey={handleSaveApiKey}
           userFullName={userFullName} handleLogout={handleLogout}
         />
 
@@ -360,6 +400,17 @@ export default function App() {
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: chatHistory.length === 0 ? 'center' : 'space-between', boxSizing: 'border-box', overflow: 'hidden' }}>
             
+            {/* Display Attached Files Header */}
+            {attachedFiles.length > 0 && (
+              <div style={{ width: '100%', maxWidth: '850px', margin: '0 auto', padding: '0 1rem', display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1rem', boxSizing: 'border-box' }}>
+                {attachedFiles.map((fileName, idx) => (
+                  <span key={idx} style={{ padding: '4px 10px', fontSize: '0.75rem', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '12px', color: t.textMuted }}>
+                    📄 {fileName}
+                  </span>
+                ))}
+              </div>
+            )}
+
             <ChatWindow 
               t={t} chatHistory={chatHistory} 
               loadingChat={loadingChat} chatEndRef={chatEndRef}
