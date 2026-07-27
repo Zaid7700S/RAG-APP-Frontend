@@ -235,10 +235,35 @@ export default function App() {
     const selectedFiles = Array.from(e.target.files);
     if (selectedFiles.length === 0) return;
     
-    // Process one file at a time for cleaner UI feedback
     const selectedFile = selectedFiles[0]; 
     setUploadStatus(`Uploading ${selectedFile.name}...`);
     
+    // 1. Instantly attach the file to the active session UI & Database
+    const activeSession = sessions.find(s => s.id === activeSessionId);
+    if (activeSession) {
+      const currentFiles = activeSession.files || [];
+      if (!currentFiles.includes(selectedFile.name)) {
+        const updatedFiles = [...currentFiles, selectedFile.name];
+        const updatedSession = { ...activeSession, files: updatedFiles };
+        
+        // Update React State immediately
+        setSessions(prev => prev.map(s => s.id === activeSessionId ? updatedSession : s));
+        
+        // Persist to Supabase immediately
+        if (session?.user?.id) {
+          supabase.from('workspace_sessions').upsert({
+            id: updatedSession.id, 
+            user_id: session.user.id, 
+            title: updatedSession.title, 
+            history: updatedSession.history,
+            files: updatedSession.files,
+            updated_at: new Date().toISOString()
+          }).then();
+        }
+      }
+    }
+
+    // 2. Start the backend upload process
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('user_id', session.user.id); 
@@ -248,39 +273,13 @@ export default function App() {
     try {
       const backendUrl = "https://rag-app-6zlh.onrender.com"; 
       
-      // 1. Send the file to the server
       await axios.post(backendUrl + '/upload/', formData, { 
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
       setUploadStatus(`⚙️ Parsing & Embedding ${selectedFile.name}...`);
       
-      // Add it to the active session immediately so the user sees the file chip
-      let updatedSessionForDB = null;
-      setSessions(prev => prev.map(s => {
-        if (s.id === activeSessionId) {
-          // Prevent duplicate chips
-          const currentFiles = s.files || [];
-          const newFiles = currentFiles.includes(selectedFile.name) ? currentFiles : [...currentFiles, selectedFile.name];
-          const updatedSession = { ...s, files: newFiles };
-          updatedSessionForDB = updatedSession;
-          return updatedSession;
-        }
-        return s;
-      }));
-
-      if (session?.user?.id && updatedSessionForDB) {
-        supabase.from('workspace_sessions').upsert({
-          id: updatedSessionForDB.id, 
-          user_id: session.user.id, 
-          title: updatedSessionForDB.title, 
-          history: updatedSessionForDB.history,
-          files: updatedSessionForDB.files,
-          updated_at: new Date().toISOString()
-        }).then();
-      }
-
-      // 2. Start polling the backend to see when the background task finishes
+      // 3. Poll for completion
       const pollInterval = setInterval(async () => {
         try {
           const res = await axios.get(`${backendUrl}/api/upload/status/?user_id=${session.user.id}&file_name=${selectedFile.name}`);
@@ -289,7 +288,6 @@ export default function App() {
             setUploadStatus(`✅ Successfully processed ${selectedFile.name}`);
             clearInterval(pollInterval);
             
-            // Clear the success message after 4 seconds
             setTimeout(() => {
               setUploadStatus((currentStatus) => currentStatus.includes('✅') ? '' : currentStatus);
             }, 4000);
@@ -301,7 +299,7 @@ export default function App() {
         } catch (err) {
           console.error("Polling error", err);
         }
-      }, 2000); // Check every 2 seconds
+      }, 2000); 
 
     } catch (error) {
       setUploadStatus(`❌ Upload failed: ${error.response?.data?.detail || error.message}`);
