@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, Globe, Lock } from 'lucide-react';
+import { Menu, Globe, Lock, Bot } from 'lucide-react';
 import axios from 'axios';
 import { supabase } from './supabaseClient';
 import Login from './components/Login';
@@ -295,6 +295,9 @@ export default function App() {
           } else if (res.data.status.startsWith('failed')) {
             setUploadStatus(`❌ Error processing ${selectedFile.name}. Try a smaller file.`);
             clearInterval(pollInterval);
+          } else if (res.data.status.startsWith('processing page')) {
+            // NEW: Dynamically update UI with page progress
+            setUploadStatus(`⚙️ ${res.data.status}...`);
           }
         } catch (err) {
           console.error("Polling error", err);
@@ -498,9 +501,30 @@ export default function App() {
             )}
           </div>
 
-          {chatHistory.length === 0 ? (
+         {chatHistory.length === 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', paddingBottom: '10vh' }}>
+              <div style={{ display: 'inline-flex', padding: '16px', borderRadius: '50%', backgroundColor: t.activeSidebarBg, marginBottom: '16px' }}>
+                <Bot size={32} color={t.accent} />
+              </div>
+              <h2 style={{ fontSize: '1.8rem', fontWeight: '600', color: t.textMain, margin: '0 0 8px 0' }}>
+                Hello, {userFullName}
+              </h2>
+              <p style={{ color: t.textMuted, marginBottom: '2.5rem' }}>
+                How can I help you today?
+              </p>
+              
               <div style={{ width: '100%', maxWidth: '800px' }}>
+                
+                {/* Display attached files on the empty welcome screen */}
+                {attachedFiles.length > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                    {attachedFiles.map((fileName, idx) => (
+                      <span key={idx} style={{ padding: '4px 10px', fontSize: '0.75rem', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '12px', color: t.textMuted }}>
+                        📄 {fileName}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 
                 <InputBar 
                   t={t} chatHistoryLength={chatHistory.length} userFullName={userFullName}
@@ -509,7 +533,7 @@ export default function App() {
                   mode={mode} setMode={setMode} showDropdown={showDropdown} setShowDropdown={setShowDropdown}
                 />
 
-                {/* Moved Scope Toggle BELOW the Input Bar */}
+                {/* Scope Toggle BELOW the Input Bar */}
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
                   <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
                     {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
