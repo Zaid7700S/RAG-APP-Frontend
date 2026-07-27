@@ -477,7 +477,7 @@ export default function App() {
             )}
           </div>
 
-          {chatHistory.length === 0 ? (
+         {chatHistory.length === 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', paddingBottom: '10vh' }}>
               <div style={{ display: 'inline-flex', padding: '16px', borderRadius: '50%', backgroundColor: t.activeSidebarBg, marginBottom: '16px' }}>
                 <Bot size={32} color={t.accent} />
@@ -490,7 +490,6 @@ export default function App() {
               </p>
               
               <div style={{ width: '100%', maxWidth: '800px' }}>
-                {/* NEW: Scope Toggle for Empty State */}
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
                   <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
                     {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
