@@ -6,7 +6,9 @@ export default function Sidebar({
   theme, setTheme, t,
   sessions, activeSessionId, createNewSession, selectSession, deleteSession,
   showSettingsDrawer, setShowSettingsDrawer,
-  apiKey, tempApiKey, setTempApiKey, handleSaveApiKey,
+  apiKey, tempApiKey, setTempApiKey,
+  googleApiKey, tempGoogleApiKey, setTempGoogleApiKey,
+  handleSaveApiKey,
   userFullName, handleLogout
 }) {
   return (
@@ -84,28 +86,41 @@ export default function Sidebar({
           {showSettingsDrawer ? (
             <form onSubmit={handleSaveApiKey} style={{ background: t.inputBg, padding: '12px', borderRadius: '12px', border: `1px solid ${t.borderDark}`, boxSizing: 'border-box' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: t.textMuted }}>SET GROQ KEY</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: t.textMuted }}>SET API KEYS</span>
                 <X size={14} style={{ cursor: 'pointer', color: t.textMuted }} onClick={() => setShowSettingsDrawer(false)} />
               </div>
               <input 
                 type="password" 
                 value={tempApiKey} 
                 onChange={(e) => setTempApiKey(e.target.value)} 
-                placeholder="gsk_..."
+                placeholder="Groq Key (gsk_...)"
+                style={{ width: '100%', padding: '8px', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '8px', color: t.textMain, fontSize: '0.85rem', boxSizing: 'border-box', marginBottom: '8px', outline: 'none' }}
+              />
+              <input 
+                type="password" 
+                value={tempGoogleApiKey} 
+                onChange={(e) => setTempGoogleApiKey(e.target.value)} 
+                placeholder="Google Key (AIza...)"
                 style={{ width: '100%', padding: '8px', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '8px', color: t.textMain, fontSize: '0.85rem', boxSizing: 'border-box', marginBottom: '10px', outline: 'none' }}
               />
               <button type="submit" style={{ width: '100%', padding: '8px', background: t.accent, color: t.accentText, border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                Save Key
+                Save Keys
               </button>
             </form>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div 
-                onClick={() => { setTempApiKey(apiKey); setShowSettingsDrawer(true); }}
+                onClick={() => { 
+                  setTempApiKey(apiKey); 
+                  setTempGoogleApiKey(googleApiKey);
+                  setShowSettingsDrawer(true); 
+                }}
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', borderRadius: '12px', cursor: 'pointer', color: t.textMuted, backgroundColor: t.inputBg, border: `1px solid ${t.borderDark}` }}
               >
-                <Key size={16} color={apiKey ? '#34d399' : t.danger} />
-                <span style={{ fontSize: '0.8rem', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{apiKey ? 'API Configured' : 'Set API Key'}</span>
+                <Key size={16} color={(apiKey && googleApiKey) ? '#34d399' : t.danger} />
+                <span style={{ fontSize: '0.8rem', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {(apiKey && googleApiKey) ? 'APIs Configured' : 'Set API Keys'}
+                </span>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px' }}>
