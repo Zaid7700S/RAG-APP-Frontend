@@ -235,34 +235,34 @@ export default function App() {
     const selectedFiles = Array.from(e.target.files);
     if (selectedFiles.length === 0) return;
     
-    setUploadStatus(`Uploading ${selectedFiles.length} file(s)...`);
-    const uploadedFileNames = [];
+    // Process one file at a time for cleaner UI feedback
+    const selectedFile = selectedFiles[0]; 
+    setUploadStatus(`Uploading ${selectedFile.name}...`);
     
-    for (const selectedFile of selectedFiles) {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('user_id', session.user.id); 
-      formData.append('hf_api_key', hfApiKey);
-      formData.append('groq_api_key', apiKey); 
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('user_id', session.user.id); 
+    formData.append('hf_api_key', hfApiKey);
+    formData.append('groq_api_key', apiKey); 
 
-      try {
-        const backendUrl = "https://rag-app-6zlh.onrender.com"; 
-        await axios.post(backendUrl + '/upload/', formData, { 
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        uploadedFileNames.push(selectedFile.name);
-      } catch (error) {
-        setUploadStatus(`Error on ${selectedFile.name}: ${error.response?.data?.detail || error.message}`);
-      }
-    }
-
-    if (uploadedFileNames.length > 0) {
-      setUploadStatus(`Queued ${uploadedFileNames.length} file(s) for background processing`);
+    try {
+      const backendUrl = "https://rag-app-6zlh.onrender.com"; 
       
+      // 1. Send the file to the server
+      await axios.post(backendUrl + '/upload/', formData, { 
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      setUploadStatus(`⚙️ Parsing & Embedding ${selectedFile.name}...`);
+      
+      // Add it to the active session immediately so the user sees the file chip
       let updatedSessionForDB = null;
       setSessions(prev => prev.map(s => {
         if (s.id === activeSessionId) {
-          const updatedSession = { ...s, files: [...(s.files || []), ...uploadedFileNames] };
+          // Prevent duplicate chips
+          const currentFiles = s.files || [];
+          const newFiles = currentFiles.includes(selectedFile.name) ? currentFiles : [...currentFiles, selectedFile.name];
+          const updatedSession = { ...s, files: newFiles };
           updatedSessionForDB = updatedSession;
           return updatedSession;
         }
@@ -279,6 +279,32 @@ export default function App() {
           updated_at: new Date().toISOString()
         }).then();
       }
+
+      // 2. Start polling the backend to see when the background task finishes
+      const pollInterval = setInterval(async () => {
+        try {
+          const res = await axios.get(`${backendUrl}/api/upload/status/?user_id=${session.user.id}&file_name=${selectedFile.name}`);
+          
+          if (res.data.status === 'completed') {
+            setUploadStatus(`✅ Successfully processed ${selectedFile.name}`);
+            clearInterval(pollInterval);
+            
+            // Clear the success message after 4 seconds
+            setTimeout(() => {
+              setUploadStatus((currentStatus) => currentStatus.includes('✅') ? '' : currentStatus);
+            }, 4000);
+
+          } else if (res.data.status.startsWith('failed')) {
+            setUploadStatus(`❌ Error processing ${selectedFile.name}. Try a smaller file.`);
+            clearInterval(pollInterval);
+          }
+        } catch (err) {
+          console.error("Polling error", err);
+        }
+      }, 2000); // Check every 2 seconds
+
+    } catch (error) {
+      setUploadStatus(`❌ Upload failed: ${error.response?.data?.detail || error.message}`);
     }
   };
 
