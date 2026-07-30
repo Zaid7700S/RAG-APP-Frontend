@@ -69,7 +69,7 @@ export default function App() {
   
   const [showDocumentManager, setShowDocumentManager] = useState(false);
   const [searchAllFiles, setSearchAllFiles] = useState(false); 
-  const [fastMode, setFastMode] = useState(true); // NEW: Fast Engine Toggle
+  const [fastMode, setFastMode] = useState(true); 
 
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
@@ -155,16 +155,20 @@ export default function App() {
 
   const handleSaveApiKey = async (e) => {
     e.preventDefault();
+    if (!tempApiKey.trim() || !tempHfApiKey.trim()) {
+      alert("Both Groq and Hugging Face API keys are required to use the system.");
+      return;
+    }
     try {
       const { error } = await supabase.auth.updateUser({ 
         data: { 
-          groq_api_key: tempApiKey,
-          hf_api_key: tempHfApiKey 
+          groq_api_key: tempApiKey.trim(),
+          hf_api_key: tempHfApiKey.trim() 
         } 
       });
       if (error) throw error;
-      setApiKey(tempApiKey);
-      setHfApiKey(tempHfApiKey);
+      setApiKey(tempApiKey.trim());
+      setHfApiKey(tempHfApiKey.trim());
       setShowSettingsDrawer(false);
     } catch (error) {
       alert("Failed to securely save API keys to cloud.");
@@ -239,7 +243,6 @@ export default function App() {
     const selectedFile = selectedFiles[0]; 
     setUploadStatus(`Uploading ${selectedFile.name}...`);
     
-    // 1. Instantly attach the file to the active session UI & Database
     const activeSession = sessions.find(s => s.id === activeSessionId);
     if (activeSession) {
       const currentFiles = activeSession.files || [];
@@ -247,10 +250,8 @@ export default function App() {
         const updatedFiles = [...currentFiles, selectedFile.name];
         const updatedSession = { ...activeSession, files: updatedFiles };
         
-        // Update React State immediately
         setSessions(prev => prev.map(s => s.id === activeSessionId ? updatedSession : s));
         
-        // Persist to Supabase immediately
         if (session?.user?.id) {
           supabase.from('workspace_sessions').upsert({
             id: updatedSession.id, 
@@ -264,13 +265,12 @@ export default function App() {
       }
     }
 
-    // 2. Start the backend upload process
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('user_id', session.user.id); 
     formData.append('hf_api_key', hfApiKey);
     formData.append('groq_api_key', apiKey); 
-    formData.append('fast_mode', fastMode.toString()); // NEW: Send the engine mode
+    formData.append('fast_mode', fastMode.toString()); 
 
     try {
       const backendUrl = "https://rag-app-6zlh.onrender.com"; 
@@ -281,7 +281,6 @@ export default function App() {
       
       setUploadStatus(`⚙️ Parsing & Embedding ${selectedFile.name}...`);
       
-      // 3. Poll for completion
       const pollInterval = setInterval(async () => {
         try {
           const res = await axios.get(`${backendUrl}/api/upload/status/?user_id=${session.user.id}&file_name=${selectedFile.name}`);
@@ -298,7 +297,6 @@ export default function App() {
             setUploadStatus(`❌ Error processing ${selectedFile.name}. Try a smaller file.`);
             clearInterval(pollInterval);
           } else if (res.data.status.startsWith('processing page')) {
-            // Dynamically update UI with page progress
             setUploadStatus(`⚙️ ${res.data.status}...`);
           }
         } catch (err) {
@@ -451,6 +449,7 @@ export default function App() {
   );
 
   const userFullName = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
+  const needsSetup = isAppReady && (!apiKey || !hfApiKey);
 
   return (
     <>
@@ -464,6 +463,50 @@ export default function App() {
         `}
       </style>
 
+      {/* Mandatory API Key Setup Modal for New Users */}
+      {needsSetup && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: t.backdrop, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: t.bgSidebar, padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '420px', border: `1px solid ${t.borderDark}`, boxShadow: `0 10px 25px ${t.shadow}` }}>
+            <h3 style={{ marginTop: 0, color: t.textMain, fontSize: '1.4rem' }}>Welcome to Workspace AI</h3>
+            <p style={{ color: t.textMuted, fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+              To power your smart document assistant, you need to securely connect your LLM and Embedding engines.
+            </p>
+            
+            <form onSubmit={handleSaveApiKey}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: t.textMain, marginBottom: '6px', fontWeight: '600' }}>
+                  Groq API Key (LLM)
+                  <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" style={{ color: '#f97316', textDecoration: 'none' }}>Get Key ↗</a>
+                </label>
+                <input 
+                  type="password" required
+                  value={tempApiKey} onChange={e => setTempApiKey(e.target.value)} 
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: `1px solid ${t.borderDark}`, background: t.inputBg, color: t.textMain, boxSizing: 'border-box' }} 
+                  placeholder="gsk_..." 
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: t.textMain, marginBottom: '6px', fontWeight: '600' }}>
+                  Hugging Face Token (Embeddings)
+                  <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noreferrer" style={{ color: '#f97316', textDecoration: 'none' }}>Get Token ↗</a>
+                </label>
+                <input 
+                  type="password" required
+                  value={tempHfApiKey} onChange={e => setTempHfApiKey(e.target.value)} 
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: `1px solid ${t.borderDark}`, background: t.inputBg, color: t.textMain, boxSizing: 'border-box' }} 
+                  placeholder="hf_..." 
+                />
+              </div>
+
+              <button type="submit" style={{ width: '100%', padding: '12px', background: t.textMain, color: t.bgMain, border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '1rem' }}>
+                Save & Continue
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showDocumentManager && (
         <DocumentManager 
           t={t} 
@@ -476,7 +519,7 @@ export default function App() {
         <div onClick={() => setIsSidebarOpen(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: t.backdrop, zIndex: 90, transition: 'opacity 0.3s' }} />
       )}
 
-      <div style={{ display: 'flex', height: '100vh', width: '100vw', background: t.bgMain, color: t.textMain, fontFamily: 'system-ui, sans-serif', overflow: 'hidden', transition: 'background 0.3s ease' }}>
+      <div style={{ display: 'flex', height: '100vh', width: '100vw', background: t.bgMain, color: t.textMain, fontFamily: 'Inter, system-ui, sans-serif', overflow: 'hidden', transition: 'background 0.3s ease' }}>
         
         <Sidebar 
           isMobile={isMobile} isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
@@ -528,17 +571,28 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Scope & Engine Toggles */}
                   <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '12px' }}>
                     
+                    {/* Scope Toggle */}
                     <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
                       {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
                     </button>
 
-                    {/* NEW: Extraction Engine Toggle */}
-                    <button type="button" onClick={() => setFastMode(!fastMode)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${fastMode ? t.accent : t.borderDark}`, backgroundColor: fastMode ? t.activeSidebarBg : t.inputBg, color: fastMode ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
-                      {fastMode ? "⚡ Fast Mode (Text Only)" : "📊 Deep Scan (Tables/Layout)"}
-                    </button>
+                    {/* NEW: Explicit Segmented Control for Parsing Engine */}
+                    <div style={{ display: 'flex', background: t.inputBg, borderRadius: '20px', border: `1px solid ${t.borderDark}`, overflow: 'hidden' }}>
+                      <button 
+                        onClick={() => setFastMode(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', border: 'none', background: fastMode ? t.activeSidebarBg : 'transparent', color: fastMode ? t.accentText : t.textMuted, transition: 'all 0.2s' }}
+                      >
+                        ⚡ Fast Text
+                      </button>
+                      <button 
+                        onClick={() => setFastMode(false)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', border: 'none', borderLeft: `1px solid ${t.borderDark}`, background: !fastMode ? t.activeSidebarBg : 'transparent', color: !fastMode ? t.accentText : t.textMuted, transition: 'all 0.2s' }}
+                      >
+                        📊 Deep Layout
+                      </button>
+                    </div>
                     
                   </div>
                   
@@ -564,15 +618,27 @@ export default function App() {
                     ))}
                   </div>
                   
-                  {/* Scope & Engine Toggles */}
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    {/* Scope Toggle */}
                     <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
                       {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
                     </button>
 
-                    <button type="button" onClick={() => setFastMode(!fastMode)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${fastMode ? t.accent : t.borderDark}`, backgroundColor: fastMode ? t.activeSidebarBg : t.inputBg, color: fastMode ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
-                      {fastMode ? "⚡ Fast Mode" : "📊 Deep Scan"}
-                    </button>
+                    {/* NEW: Explicit Segmented Control for Parsing Engine */}
+                    <div style={{ display: 'flex', background: t.inputBg, borderRadius: '20px', border: `1px solid ${t.borderDark}`, overflow: 'hidden' }}>
+                      <button 
+                        onClick={() => setFastMode(true)}
+                        style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', border: 'none', background: fastMode ? t.activeSidebarBg : 'transparent', color: fastMode ? t.accentText : t.textMuted, transition: 'all 0.2s' }}
+                      >
+                        ⚡ Fast
+                      </button>
+                      <button 
+                        onClick={() => setFastMode(false)}
+                        style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', border: 'none', borderLeft: `1px solid ${t.borderDark}`, background: !fastMode ? t.activeSidebarBg : 'transparent', color: !fastMode ? t.accentText : t.textMuted, transition: 'all 0.2s' }}
+                      >
+                        📊 Deep
+                      </button>
+                    </div>
                   </div>
                 </div>
 
