@@ -69,6 +69,7 @@ export default function App() {
   
   const [showDocumentManager, setShowDocumentManager] = useState(false);
   const [searchAllFiles, setSearchAllFiles] = useState(false); 
+  const [fastMode, setFastMode] = useState(true); // NEW: Fast Engine Toggle
 
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
@@ -269,6 +270,7 @@ export default function App() {
     formData.append('user_id', session.user.id); 
     formData.append('hf_api_key', hfApiKey);
     formData.append('groq_api_key', apiKey); 
+    formData.append('fast_mode', fastMode.toString()); // NEW: Send the engine mode
 
     try {
       const backendUrl = "https://rag-app-6zlh.onrender.com"; 
@@ -296,7 +298,7 @@ export default function App() {
             setUploadStatus(`❌ Error processing ${selectedFile.name}. Try a smaller file.`);
             clearInterval(pollInterval);
           } else if (res.data.status.startsWith('processing page')) {
-            // NEW: Dynamically update UI with page progress
+            // Dynamically update UI with page progress
             setUploadStatus(`⚙️ ${res.data.status}...`);
           }
         } catch (err) {
@@ -513,7 +515,6 @@ export default function App() {
                   mode={mode} setMode={setMode} showDropdown={showDropdown} setShowDropdown={setShowDropdown}
                 />
 
-                {/* --- MOVED EVERYTHING BELOW THE INPUT BAR TO PREVENT OVERLAP --- */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', marginTop: '24px' }}>
                   
                   {/* Display attached files */}
@@ -527,10 +528,19 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Scope Toggle */}
-                  <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
-                    {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
-                  </button>
+                  {/* Scope & Engine Toggles */}
+                  <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                    
+                    <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
+                      {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
+                    </button>
+
+                    {/* NEW: Extraction Engine Toggle */}
+                    <button type="button" onClick={() => setFastMode(!fastMode)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${fastMode ? t.accent : t.borderDark}`, backgroundColor: fastMode ? t.activeSidebarBg : t.inputBg, color: fastMode ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
+                      {fastMode ? "⚡ Fast Mode (Text Only)" : "📊 Deep Scan (Tables/Layout)"}
+                    </button>
+                    
+                  </div>
                   
                 </div>
 
@@ -554,9 +564,16 @@ export default function App() {
                     ))}
                   </div>
                   
-                  <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
-                    {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
-                  </button>
+                  {/* Scope & Engine Toggles */}
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
+                      {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
+                    </button>
+
+                    <button type="button" onClick={() => setFastMode(!fastMode)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${fastMode ? t.accent : t.borderDark}`, backgroundColor: fastMode ? t.activeSidebarBg : t.inputBg, color: fastMode ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
+                      {fastMode ? "⚡ Fast Mode" : "📊 Deep Scan"}
+                    </button>
+                  </div>
                 </div>
 
                 <InputBar 
