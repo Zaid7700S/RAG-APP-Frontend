@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, Globe, Lock, Bot } from 'lucide-react';
+import { Menu, Globe, Lock, Bot, X } from 'lucide-react';
 import axios from 'axios';
 import { supabase } from './supabaseClient';
 import Login from './components/Login';
@@ -70,6 +70,7 @@ export default function App() {
   const [showDocumentManager, setShowDocumentManager] = useState(false);
   const [searchAllFiles, setSearchAllFiles] = useState(false); 
   const [fastMode, setFastMode] = useState(true); 
+  const [dismissSetup, setDismissSetup] = useState(false); // NEW: Tracks if user closed the modal
 
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
@@ -170,6 +171,7 @@ export default function App() {
       setApiKey(tempApiKey.trim());
       setHfApiKey(tempHfApiKey.trim());
       setShowSettingsDrawer(false);
+      setDismissSetup(true);
     } catch (error) {
       alert("Failed to securely save API keys to cloud.");
     }
@@ -449,7 +451,7 @@ export default function App() {
   );
 
   const userFullName = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
-  const needsSetup = isAppReady && (!apiKey || !hfApiKey);
+  const needsSetup = isAppReady && (!apiKey || !hfApiKey) && !dismissSetup;
 
   return (
     <>
@@ -466,8 +468,18 @@ export default function App() {
       {/* Mandatory API Key Setup Modal for New Users */}
       {needsSetup && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: t.backdrop, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: t.bgSidebar, padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '420px', border: `1px solid ${t.borderDark}`, boxShadow: `0 10px 25px ${t.shadow}` }}>
-            <h3 style={{ marginTop: 0, color: t.textMain, fontSize: '1.4rem' }}>Welcome to Workspace AI</h3>
+          <div style={{ background: t.bgSidebar, padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '420px', border: `1px solid ${t.borderDark}`, boxShadow: `0 10px 25px ${t.shadow}`, position: 'relative' }}>
+            
+            {/* Close Button */}
+            <button 
+              onClick={() => setDismissSetup(true)}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: t.textMuted, cursor: 'pointer', padding: '4px' }}
+              title="Close"
+            >
+              <X size={20} />
+            </button>
+
+            <h3 style={{ marginTop: 0, color: t.textMain, fontSize: '1.4rem', paddingRight: '24px' }}>Welcome to Workspace AI</h3>
             <p style={{ color: t.textMuted, fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
               To power your smart document assistant, you need to securely connect your LLM and Embedding engines.
             </p>
@@ -578,7 +590,7 @@ export default function App() {
                       {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
                     </button>
 
-                    {/* NEW: Explicit Segmented Control for Parsing Engine */}
+                    {/* Explicit Segmented Control for Parsing Engine */}
                     <div style={{ display: 'flex', background: t.inputBg, borderRadius: '20px', border: `1px solid ${t.borderDark}`, overflow: 'hidden' }}>
                       <button 
                         onClick={() => setFastMode(true)}
@@ -624,7 +636,7 @@ export default function App() {
                       {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
                     </button>
 
-                    {/* NEW: Explicit Segmented Control for Parsing Engine */}
+                    {/* Explicit Segmented Control for Parsing Engine */}
                     <div style={{ display: 'flex', background: t.inputBg, borderRadius: '20px', border: `1px solid ${t.borderDark}`, overflow: 'hidden' }}>
                       <button 
                         onClick={() => setFastMode(true)}
