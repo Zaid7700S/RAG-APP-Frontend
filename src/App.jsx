@@ -55,6 +55,7 @@ const themeColors = {
 
 export default function App() {
   const [session, setSession] = useState(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
   
   const [apiKey, setApiKey] = useState('');
@@ -84,6 +85,7 @@ export default function App() {
   
   const [file, setFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(null); // 0-100 or null when not applicable
   
   const chatEndRef = useRef(null);
   const t = themeColors[theme];
@@ -146,6 +148,28 @@ export default function App() {
     setIsAppReady(true);
   };
 
+  const handleGuestLogin = () => {
+    // Guest identity lives only in memory - regenerated fresh on every reload,
+    // which is what makes chats/sessions disappear on refresh.
+    const guestId = `guest_${crypto.randomUUID()}`;
+    const fakeSession = { user: { id: guestId, email: null, user_metadata: { full_name: 'Guest' } } };
+
+    setIsGuest(true);
+    setSession(fakeSession);
+
+    // API keys are the one thing that DOES survive reload for guests, per design.
+    const storedGroqKey = localStorage.getItem('guest_groq_key') || '';
+    const storedHfKey = localStorage.getItem('guest_hf_key') || '';
+    setApiKey(storedGroqKey);
+    setHfApiKey(storedHfKey);
+
+    const newId = `session_${Date.now()}`;
+    const newSession = { id: newId, title: 'New Session', history: [], files: [] };
+    setSessions([newSession]);
+    setActiveSessionId(newId);
+    setIsAppReady(true);
+  };
+
   useEffect(() => localStorage.setItem('workspace_theme', theme), [theme]);
   
   useEffect(() => {
@@ -160,6 +184,17 @@ export default function App() {
       alert("Both Groq and Hugging Face API keys are required to use the system.");
       return;
     }
+
+    if (isGuest) {
+      localStorage.setItem('guest_groq_key', tempApiKey.trim());
+      localStorage.setItem('guest_hf_key', tempHfApiKey.trim());
+      setApiKey(tempApiKey.trim());
+      setHfApiKey(tempHfApiKey.trim());
+      setShowSettingsDrawer(false);
+      setDismissSetup(true);
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.updateUser({ 
         data: { 
@@ -181,6 +216,14 @@ export default function App() {
     setApiKey('');
     setHfApiKey('');
     setIsAppReady(false);
+
+    if (isGuest) {
+      setIsGuest(false);
+      setSession(null);
+      setSessions([]);
+      setActiveSessionId(null);
+      return;
+    }
     await supabase.auth.signOut();
   };
 
@@ -202,7 +245,7 @@ export default function App() {
     setActiveSessionId(newId);
     if (isMobile) setIsSidebarOpen(false);
 
-    if (session?.user?.id) {
+    if (!isGuest && session?.user?.id) {
       await supabase.from('workspace_sessions').insert({
         id: newId, user_id: session.user.id, title: newSession.title, history: newSession.history, files: newSession.files
       });
@@ -216,6 +259,7 @@ export default function App() {
 
   const deleteSession = async (e, idToDelete) => {
     e.stopPropagation();
+    if (!window.confirm('Delete this chat session? This cannot be undone.')) return;
     const newSessions = sessions.filter(s => s.id !== idToDelete);
     
     if (newSessions.length === 0) {
@@ -223,7 +267,7 @@ export default function App() {
       const newSession = { id: newId, title: 'New Session', history: [], files: [] };
       setSessions([newSession]);
       setActiveSessionId(newId);
-      if (session?.user?.id) {
+      if (!isGuest && session?.user?.id) {
         await supabase.from('workspace_sessions').insert({
           id: newId, user_id: session.user.id, title: newSession.title, history: newSession.history, files: newSession.files
         });
@@ -233,7 +277,7 @@ export default function App() {
       if (activeSessionId === idToDelete) setActiveSessionId(newSessions[0].id);
     }
 
-    if (session?.user?.id) {
+    if (!isGuest && session?.user?.id) {
       await supabase.from('workspace_sessions').delete().eq('id', idToDelete);
     }
   };
@@ -254,7 +298,7 @@ export default function App() {
         
         setSessions(prev => prev.map(s => s.id === activeSessionId ? updatedSession : s));
         
-        if (session?.user?.id) {
+        if (!isGuest && session?.user?.id) {
           supabase.from('workspace_sessions').upsert({
             id: updatedSession.id, 
             user_id: session.user.id, 
@@ -282,6 +326,7 @@ export default function App() {
       });
       
       setUploadStatus(`⚙️ Parsing & Embedding ${selectedFile.name}...`);
+      setUploadProgress(0);
       
       const pollInterval = setInterval(async () => {
         try {
@@ -289,17 +334,25 @@ export default function App() {
           
           if (res.data.status === 'completed') {
             setUploadStatus(`✅ Successfully processed ${selectedFile.name}`);
+            setUploadProgress(100);
             clearInterval(pollInterval);
             
             setTimeout(() => {
               setUploadStatus((currentStatus) => currentStatus.includes('✅') ? '' : currentStatus);
+              setUploadProgress(null);
             }, 4000);
 
           } else if (res.data.status.startsWith('failed')) {
             setUploadStatus(`❌ Error processing ${selectedFile.name}. Try a smaller file.`);
+            setUploadProgress(null);
             clearInterval(pollInterval);
           } else if (res.data.status.startsWith('processing page')) {
             setUploadStatus(`⚙️ ${res.data.status}...`);
+            const match = res.data.status.match(/processing page (\d+) of (\d+)/);
+            if (match) {
+              const [, current, total] = match;
+              setUploadProgress(Math.round((Number(current) / Number(total)) * 100));
+            }
           }
         } catch (err) {
           console.error("Polling error", err);
@@ -308,6 +361,7 @@ export default function App() {
 
     } catch (error) {
       setUploadStatus(`❌ Upload failed: ${error.response?.data?.detail || error.message}`);
+      setUploadProgress(null);
     }
   };
 
@@ -337,7 +391,7 @@ export default function App() {
       return s;
     }));
 
-    if (session?.user?.id && updatedSessionForDB) {
+    if (!isGuest && session?.user?.id && updatedSessionForDB) {
         supabase.from('workspace_sessions').upsert({
             id: updatedSessionForDB.id, user_id: session.user.id, title: updatedSessionForDB.title, 
             history: updatedSessionForDB.history.slice(0, -1), files: updatedSessionForDB.files, updated_at: new Date().toISOString()
@@ -415,10 +469,12 @@ export default function App() {
                       const { _streamId, ...rest } = m;
                       return rest;
                   });
-                  supabase.from('workspace_sessions').upsert({
-                      id: finalSession.id, user_id: session.user.id, title: finalSession.title, 
-                      history: cleanHistory, files: finalSession.files, updated_at: new Date().toISOString()
-                  }).then();
+                  if (!isGuest) {
+                    supabase.from('workspace_sessions').upsert({
+                        id: finalSession.id, user_id: session.user.id, title: finalSession.title, 
+                        history: cleanHistory, files: finalSession.files, updated_at: new Date().toISOString()
+                    }).then();
+                  }
               }
               return s;
           });
@@ -442,7 +498,7 @@ export default function App() {
     }
   };
 
-  if (!session) return <Login />;
+  if (!session) return <Login onGuestLogin={handleGuestLogin} />;
   
   if (!isAppReady) return (
     <div style={{ height: '100vh', width: '100vw', background: t.bgMain, display: 'flex', justifyContent: 'center', alignItems: 'center', color: t.textMain, fontFamily: 'system-ui, sans-serif' }}>
@@ -450,7 +506,7 @@ export default function App() {
     </div>
   );
 
-  const userFullName = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
+  const userFullName = isGuest ? 'Guest' : (session.user.user_metadata?.full_name || session.user.email.split('@')[0]);
   const needsSetup = isAppReady && (!apiKey || !hfApiKey) && !dismissSetup;
 
   return (
@@ -523,6 +579,7 @@ export default function App() {
         <DocumentManager 
           t={t} 
           session={session} 
+          isGuest={isGuest}
           onClose={() => setShowDocumentManager(false)} 
         />
       )}
@@ -541,7 +598,7 @@ export default function App() {
           apiKey={apiKey} tempApiKey={tempApiKey} setTempApiKey={setTempApiKey} 
           hfApiKey={hfApiKey} tempHfApiKey={tempHfApiKey} setTempHfApiKey={setTempHfApiKey}
           handleSaveApiKey={handleSaveApiKey}
-          userFullName={userFullName} handleLogout={handleLogout}
+          userFullName={userFullName} handleLogout={handleLogout} isGuest={isGuest}
           setShowDocumentManager={setShowDocumentManager} 
         />
 
@@ -565,7 +622,7 @@ export default function App() {
                 
                 <InputBar 
                   t={t} chatHistoryLength={chatHistory.length} userFullName={userFullName}
-                  uploadStatus={uploadStatus} file={file} setFile={setFile} setUploadStatus={setUploadStatus} handleFileSelect={handleFileSelect}
+                  uploadStatus={uploadStatus} uploadProgress={uploadProgress} file={file} setFile={setFile} setUploadStatus={setUploadStatus} handleFileSelect={handleFileSelect}
                   handleChatSubmit={handleChatSubmit} query={query} setQuery={setQuery} apiKey={apiKey} loadingChat={loadingChat}
                   mode={mode} setMode={setMode} showDropdown={showDropdown} setShowDropdown={setShowDropdown}
                 />
@@ -656,7 +713,7 @@ export default function App() {
 
                 <InputBar 
                   t={t} chatHistoryLength={chatHistory.length} userFullName={userFullName}
-                  uploadStatus={uploadStatus} file={file} setFile={setFile} setUploadStatus={setUploadStatus} handleFileSelect={handleFileSelect}
+                  uploadStatus={uploadStatus} uploadProgress={uploadProgress} file={file} setFile={setFile} setUploadStatus={setUploadStatus} handleFileSelect={handleFileSelect}
                   handleChatSubmit={handleChatSubmit} query={query} setQuery={setQuery} apiKey={apiKey} loadingChat={loadingChat}
                   mode={mode} setMode={setMode} showDropdown={showDropdown} setShowDropdown={setShowDropdown}
                 />
