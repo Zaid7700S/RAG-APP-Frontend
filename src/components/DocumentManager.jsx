@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, Trash2, FileText, Loader } from 'lucide-react';
 import axios from 'axios';
 
-export default function DocumentManager({ t, onClose, session }) {
+export default function DocumentManager({ t, onClose, session, isGuest }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,6 +49,11 @@ export default function DocumentManager({ t, onClose, session }) {
         <div style={{ padding: '1.5rem', borderBottom: `1px solid ${t.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: t.bgSidebar }}>
           <h2 style={{ margin: 0, color: t.textMain, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <FileText size={20} color={t.accent} /> Knowledge Base
+            {isGuest && (
+              <span style={{ fontSize: '0.7rem', fontWeight: '600', padding: '3px 8px', borderRadius: '10px', background: t.inputBg, border: `1px solid ${t.borderDark}`, color: documents.length >= 3 ? t.danger : t.textMuted }}>
+                {documents.length}/3 documents (Guest)
+              </span>
+            )}
           </h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer' }}><X size={20} /></button>
         </div>
