@@ -1,8 +1,17 @@
-import React from 'react';
-import { User, Bot, FileText } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Bot, FileText, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 export default function ChatWindow({ t, chatHistory, loadingChat, chatEndRef }) {
+  const [copiedIndex, setCopiedIndex] = useState(null);
+
+  const handleCopy = (content, index) => {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex((cur) => (cur === index ? null : cur)), 1500);
+    });
+  };
+
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       
@@ -20,6 +29,9 @@ export default function ChatWindow({ t, chatHistory, loadingChat, chatEndRef }) 
           .ai-markdown li { margin-bottom: 0.3rem; }
           .ai-markdown pre { background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px; overflow-x: auto; }
           .ai-markdown code { background: rgba(0,0,0,0.1); padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+
+          .msg-row .msg-copy-btn { opacity: 0; transition: opacity 0.15s ease; }
+          .msg-row:hover .msg-copy-btn { opacity: 1; }
         `}
       </style>
 
@@ -27,7 +39,7 @@ export default function ChatWindow({ t, chatHistory, loadingChat, chatEndRef }) 
       <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         
         {chatHistory.map((msg, index) => (
-          <div key={index} style={{ 
+          <div key={index} className="msg-row" style={{ 
             display: 'flex', 
             flexDirection: msg.role === 'user' ? 'row-reverse' : 'row', 
             gap: '16px', 
@@ -73,6 +85,22 @@ export default function ChatWindow({ t, chatHistory, loadingChat, chatEndRef }) 
                   </div>
                 )}
               </div>
+
+              {msg.content && (
+                <button
+                  className="msg-copy-btn"
+                  onClick={() => handleCopy(msg.content, index)}
+                  title="Copy message"
+                  style={{
+                    alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                    display: 'flex', alignItems: 'center', gap: '4px',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: t.textMuted, fontSize: '0.7rem', padding: '2px 4px'
+                  }}
+                >
+                  {copiedIndex === index ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
+                </button>
+              )}
 
               {msg.sources && msg.sources.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
