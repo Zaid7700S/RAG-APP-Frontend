@@ -55,6 +55,7 @@ const themeColors = {
 
 export default function App() {
   const [session, setSession] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
   
@@ -94,10 +95,12 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) initializeUserData(session.user);
+      setAuthChecked(true);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      setAuthChecked(true);
       if (session) {
         initializeUserData(session.user);
       } else {
@@ -498,6 +501,12 @@ export default function App() {
     }
   };
 
+  if (!authChecked) return (
+    <div style={{ height: '100vh', width: '100vw', background: t.bgMain, display: 'flex', justifyContent: 'center', alignItems: 'center', color: t.textMain, fontFamily: 'system-ui, sans-serif' }}>
+      Loading...
+    </div>
+  );
+
   if (!session) return <Login onGuestLogin={handleGuestLogin} />;
   
   if (!isAppReady) return (
@@ -643,7 +652,7 @@ export default function App() {
                   <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '12px' }}>
                     
                     {/* Scope Toggle */}
-                    <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
+                    <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.activeSidebarText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
                       {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
                     </button>
 
@@ -651,13 +660,13 @@ export default function App() {
                     <div style={{ display: 'flex', background: t.inputBg, borderRadius: '20px', border: `1px solid ${t.borderDark}`, overflow: 'hidden' }}>
                       <button 
                         onClick={() => setFastMode(true)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', border: 'none', background: fastMode ? t.activeSidebarBg : 'transparent', color: fastMode ? t.accentText : t.textMuted, transition: 'all 0.2s' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', border: 'none', background: fastMode ? t.activeSidebarBg : 'transparent', color: fastMode ? t.activeSidebarText : t.textMuted, transition: 'all 0.2s' }}
                       >
                         ⚡ Fast Text
                       </button>
                       <button 
                         onClick={() => setFastMode(false)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', border: 'none', borderLeft: `1px solid ${t.borderDark}`, background: !fastMode ? t.activeSidebarBg : 'transparent', color: !fastMode ? t.accentText : t.textMuted, transition: 'all 0.2s' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', border: 'none', borderLeft: `1px solid ${t.borderDark}`, background: !fastMode ? t.activeSidebarBg : 'transparent', color: !fastMode ? t.activeSidebarText : t.textMuted, transition: 'all 0.2s' }}
                       >
                         📊 Deep Layout
                       </button>
@@ -689,7 +698,7 @@ export default function App() {
                   
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     {/* Scope Toggle */}
-                    <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.accentText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
+                    <button type="button" onClick={() => setSearchAllFiles(!searchAllFiles)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${searchAllFiles ? t.accent : t.borderDark}`, backgroundColor: searchAllFiles ? t.activeSidebarBg : t.inputBg, color: searchAllFiles ? t.activeSidebarText : t.textMuted, fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' }}>
                       {searchAllFiles ? <><Globe size={14}/> Scope: All Uploaded Files</> : <><Lock size={14}/> Scope: Current Session Only</>}
                     </button>
 
@@ -697,13 +706,13 @@ export default function App() {
                     <div style={{ display: 'flex', background: t.inputBg, borderRadius: '20px', border: `1px solid ${t.borderDark}`, overflow: 'hidden' }}>
                       <button 
                         onClick={() => setFastMode(true)}
-                        style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', border: 'none', background: fastMode ? t.activeSidebarBg : 'transparent', color: fastMode ? t.accentText : t.textMuted, transition: 'all 0.2s' }}
+                        style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', border: 'none', background: fastMode ? t.activeSidebarBg : 'transparent', color: fastMode ? t.activeSidebarText : t.textMuted, transition: 'all 0.2s' }}
                       >
                         ⚡ Fast
                       </button>
                       <button 
                         onClick={() => setFastMode(false)}
-                        style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', border: 'none', borderLeft: `1px solid ${t.borderDark}`, background: !fastMode ? t.activeSidebarBg : 'transparent', color: !fastMode ? t.accentText : t.textMuted, transition: 'all 0.2s' }}
+                        style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', border: 'none', borderLeft: `1px solid ${t.borderDark}`, background: !fastMode ? t.activeSidebarBg : 'transparent', color: !fastMode ? t.activeSidebarText : t.textMuted, transition: 'all 0.2s' }}
                       >
                         📊 Deep
                       </button>
