@@ -11,6 +11,7 @@ export default function Sidebar({
   hfApiKey, tempHfApiKey, setTempHfApiKey,
   handleSaveApiKey,
   userFullName, handleLogout, isGuest,
+  session, getAuthHeaders,
   setShowDocumentManager 
 }) {
   const [editingSessionId, setEditingSessionId] = useState(null);
@@ -37,10 +38,10 @@ export default function Sidebar({
     return new Date(ts).toLocaleDateString();
   };
 
-  const startEditing = (e, session) => {
+  const startEditing = (e, sess) => {
     e.stopPropagation();
-    setEditingSessionId(session.id);
-    setEditTitle(session.title);
+    setEditingSessionId(sess.id);
+    setEditTitle(sess.title);
   };
 
   const saveEditing = async (e, sessionId) => {
@@ -56,7 +57,10 @@ export default function Sidebar({
 
     try {
       const backendUrl = "https://rag-app-6zlh.onrender.com";
-      await axios.put(`${backendUrl}/api/sessions/${sessionId}`, { title: editTitle });
+      await axios.put(`${backendUrl}/api/sessions/${sessionId}`, 
+        { title: editTitle, user_id: session?.user?.id },
+        { headers: { ...getAuthHeaders() } }
+      );
     } catch (error) {
       console.error("Failed to rename session:", error);
     }
