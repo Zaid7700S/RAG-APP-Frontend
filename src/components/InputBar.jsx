@@ -114,7 +114,7 @@ export default function InputBar({
           <button 
             type="submit" 
             disabled={!apiKey || loadingChat || !query.trim()}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', minWidth: '40px', borderRadius: '50%', background: (!apiKey || loadingChat || !query.trim()) ? t.activeSidebarBg : t.accent, color: t.accentText, border: 'none', cursor: (!apiKey || loadingChat || !query.trim()) ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', minWidth: '40px', borderRadius: '50%', background: (!apiKey || loadingChat || !query.trim()) ? t.activeSidebarBg : t.accent, color: (!apiKey || loadingChat || !query.trim()) ? t.textMuted : t.accentText, border: 'none', cursor: (!apiKey || loadingChat || !query.trim()) ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}
           >
             <Send size={18} />
           </button>
