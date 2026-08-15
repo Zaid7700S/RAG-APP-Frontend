@@ -10,11 +10,32 @@ export default function Sidebar({
   apiKey, tempApiKey, setTempApiKey,
   hfApiKey, tempHfApiKey, setTempHfApiKey,
   handleSaveApiKey,
-  userFullName, handleLogout,
+  userFullName, handleLogout, isGuest,
   setShowDocumentManager 
 }) {
   const [editingSessionId, setEditingSessionId] = useState(null);
   const [editTitle, setEditTitle] = useState("");
+
+  // Pure, one-shot computation at render time - no setInterval/ticking clock, so it's free.
+  const getRelativeTime = (s) => {
+    let ts = null;
+    if (s.updated_at) ts = new Date(s.updated_at).getTime();
+    else if (s.created_at) ts = new Date(s.created_at).getTime();
+    else if (typeof s.id === 'string' && s.id.startsWith('session_')) {
+      const parsed = Number(s.id.replace('session_', ''));
+      if (!Number.isNaN(parsed)) ts = parsed;
+    }
+    if (!ts) return null;
+
+    const diffMin = Math.floor((Date.now() - ts) / 60000);
+    if (diffMin < 1) return 'Just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    if (diffDay < 7) return `${diffDay}d ago`;
+    return new Date(ts).toLocaleDateString();
+  };
 
   const startEditing = (e, session) => {
     e.stopPropagation();
@@ -59,7 +80,10 @@ export default function Sidebar({
       <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', height: '100%', width: '260px', boxSizing: 'border-box' }}>
         
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.2rem' }}>
-          <h1 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', letterSpacing: '1px' }}>RAG System</h1>
+          <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '800', letterSpacing: '0.5px', display: 'flex', alignItems: 'baseline', gap: '5px' }}>
+            <span style={{ color: t.accent }}>RAG</span>
+            <span style={{ color: t.textMain, fontWeight: '600', fontSize: '1.1rem' }}>System</span>
+          </h1>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer', padding: '4px' }}>
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
@@ -120,9 +144,14 @@ export default function Sidebar({
                     style={{ flex: 1, background: t.inputBg, color: t.textMain, border: `1px solid ${t.accent}`, borderRadius: '4px', padding: '2px 4px', fontSize: '0.85rem', outline: 'none' }}
                   />
                 ) : (
-                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: s.id === activeSessionId ? '500' : '400' }}>
-                    {s.title}
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: s.id === activeSessionId ? '500' : '400' }}>
+                      {s.title}
+                    </span>
+                    {getRelativeTime(s) && (
+                      <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{getRelativeTime(s)}</span>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -132,12 +161,12 @@ export default function Sidebar({
                     <Check size={14} />
                   </button>
                 ) : (
-                  <button onClick={(e) => startEditing(e, s)} style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer', padding: '4px', opacity: s.id === activeSessionId ? 0.8 : 0 }}>
+                  <button onClick={(e) => startEditing(e, s)} style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer', padding: '4px', opacity: (isMobile || s.id === activeSessionId) ? 0.8 : 0 }}>
                     <Edit2 size={14} />
                   </button>
                 )}
                 
-                <button onClick={(e) => deleteSession(e, s.id)} title="Delete Session" style={{ background: 'none', border: 'none', color: t.danger, cursor: 'pointer', padding: '4px', opacity: s.id === activeSessionId ? 0.8 : 0 }}>
+                <button onClick={(e) => deleteSession(e, s.id)} title="Delete Session" style={{ background: 'none', border: 'none', color: t.danger, cursor: 'pointer', padding: '4px', opacity: (isMobile || s.id === activeSessionId) ? 0.8 : 0 }}>
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -165,9 +194,12 @@ export default function Sidebar({
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
                   <div style={{ width: '30px', height: '30px', minWidth: '30px', borderRadius: '50%', backgroundColor: t.activeSidebarBg, color: t.activeSidebarText, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>{userFullName?.[0]?.toUpperCase()}</div>
-                  <div style={{ overflow: 'hidden' }}><div style={{ fontSize: '0.85rem', color: t.textMain, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', fontWeight: '500' }}>{userFullName}</div></div>
+                  <div style={{ overflow: 'hidden' }}>
+                    <div style={{ fontSize: '0.85rem', color: t.textMain, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', fontWeight: '500' }}>{userFullName}</div>
+                    {isGuest && <div style={{ fontSize: '0.7rem', color: t.textMuted }}>Guest Mode · not saved</div>}
+                  </div>
                 </div>
-                <button onClick={handleLogout} title="Logout" style={{ background: 'none', border: 'none', color: t.danger, cursor: 'pointer', padding: '4px' }}><LogOut size={18} /></button>
+                <button onClick={handleLogout} title={isGuest ? 'Exit Guest Mode' : 'Logout'} style={{ background: 'none', border: 'none', color: t.danger, cursor: 'pointer', padding: '4px' }}><LogOut size={18} /></button>
               </div>
             </div>
           )}
