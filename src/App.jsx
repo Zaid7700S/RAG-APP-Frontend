@@ -91,6 +91,11 @@ export default function App() {
   const chatEndRef = useRef(null);
   const t = themeColors[theme];
 
+  const getAuthHeaders = () => {
+    if (isGuest || !session?.access_token) return {};
+    return { Authorization: `Bearer ${session.access_token}` };
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -325,7 +330,7 @@ export default function App() {
       const backendUrl = "https://rag-app-6zlh.onrender.com"; 
       
       await axios.post(backendUrl + '/upload/', formData, { 
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data', ...getAuthHeaders() }
       });
       
       setUploadStatus(`⚙️ Parsing & Embedding ${selectedFile.name}...`);
@@ -406,7 +411,7 @@ export default function App() {
       
       const response = await fetch(backendUrl + '/chat/', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify({
             session_id: activeSessionId,
             user_id: session.user.id,
@@ -589,6 +594,7 @@ export default function App() {
           t={t} 
           session={session} 
           isGuest={isGuest}
+          getAuthHeaders={getAuthHeaders}
           onClose={() => setShowDocumentManager(false)} 
         />
       )}
@@ -608,6 +614,7 @@ export default function App() {
           hfApiKey={hfApiKey} tempHfApiKey={tempHfApiKey} setTempHfApiKey={setTempHfApiKey}
           handleSaveApiKey={handleSaveApiKey}
           userFullName={userFullName} handleLogout={handleLogout} isGuest={isGuest}
+          session={session} getAuthHeaders={getAuthHeaders}
           setShowDocumentManager={setShowDocumentManager} 
         />
 
