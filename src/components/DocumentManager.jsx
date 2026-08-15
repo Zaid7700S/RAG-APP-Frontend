@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, Trash2, FileText, Loader } from 'lucide-react';
 import axios from 'axios';
 
-export default function DocumentManager({ t, onClose, session, isGuest }) {
+export default function DocumentManager({ t, onClose, session, isGuest, getAuthHeaders }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -10,7 +10,9 @@ export default function DocumentManager({ t, onClose, session, isGuest }) {
   const fetchDocuments = async () => {
     try {
       const backendUrl = "https://rag-app-6zlh.onrender.com";
-      const res = await axios.get(`${backendUrl}/api/documents/${session.user.id}`);
+      const res = await axios.get(`${backendUrl}/api/documents/${session.user.id}`, {
+        headers: { ...getAuthHeaders() }
+      });
       setDocuments(res.data.documents || []);
     } catch (error) {
       console.error("Failed to fetch documents", error);
@@ -29,7 +31,9 @@ export default function DocumentManager({ t, onClose, session, isGuest }) {
     try {
       setDocuments(prev => prev.filter(doc => doc.file_name !== fileName));
       const backendUrl = "https://rag-app-6zlh.onrender.com";
-      await axios.delete(`${backendUrl}/api/documents/${session.user.id}/${fileName}`);
+      await axios.delete(`${backendUrl}/api/documents/${session.user.id}/${fileName}`, {
+        headers: { ...getAuthHeaders() }
+      });
     } catch (error) {
       alert("Failed to delete document.");
       fetchDocuments(); // Revert on failure
