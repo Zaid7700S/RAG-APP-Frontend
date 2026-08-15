@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 
-export default function Login() {
+export default function Login({ onGuestLogin }) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -132,6 +132,22 @@ export default function Login() {
             {isSignUp ? 'Existing user? Log in.' : 'Request new access credentials.'}
           </button>
         </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0 1rem 0' }}>
+          <div style={{ flex: 1, height: '1px', backgroundColor: '#3f3f46' }}></div>
+          <span style={{ padding: '0 10px', color: '#a1a1aa', fontSize: '0.8rem' }}>OR</span>
+          <div style={{ flex: 1, height: '1px', backgroundColor: '#3f3f46' }}></div>
+        </div>
+
+        <button
+          onClick={onGuestLogin}
+          style={{ width: '100%', padding: '12px', background: 'transparent', color: '#a1a1aa', border: '1px solid #3f3f46', borderRadius: '8px', cursor: 'pointer', fontWeight: '500', fontSize: '0.85rem' }}
+        >
+          Continue as Guest
+        </button>
+        <p style={{ textAlign: 'center', color: '#71717a', fontSize: '0.75rem', margin: '10px 0 0 0', lineHeight: '1.4' }}>
+          No sign-up needed. Your chats reset on reload and uploads are capped at 3 documents.
+        </p>
       </div>
     </div>
   );
