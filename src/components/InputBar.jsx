@@ -3,10 +3,15 @@ import { Paperclip, X, Plus, ChevronDown, Send } from 'lucide-react';
 
 export default function InputBar({
   t, chatHistoryLength, userFullName,
-  uploadStatus, file, setFile, setUploadStatus, handleFileSelect,
+  uploadStatus, uploadProgress, file, setFile, setUploadStatus, handleFileSelect,
   handleChatSubmit, query, setQuery, apiKey, loadingChat,
   mode, setMode, showDropdown, setShowDropdown
 }) {
+  const suggestedPrompts = [
+    "Summarize the key points of this document",
+    "What are the main risks or limitations mentioned?",
+    "Explain this in simple terms"
+  ];
   return (
     <div style={{ width: '100%', boxSizing: 'border-box', padding: '1rem', marginTop: chatHistoryLength === 0 ? '-10vh' : '0' }}>
       <div style={{ width: '100%', maxWidth: '850px', margin: '0 auto' }}>
@@ -16,15 +21,36 @@ export default function InputBar({
             <h2 style={{ fontWeight: '500', margin: '0 0 10px 0', fontSize: '1.8rem', color: t.textMain }}>
               Hello, {userFullName}
             </h2>
-            <p style={{ color: t.textMuted, margin: 0, fontSize: '1rem' }}>How can I help you today?</p>
+            <p style={{ color: t.textMuted, margin: '0 0 20px 0', fontSize: '1rem' }}>How can I help you today?</p>
+            {apiKey && (
+              <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                {suggestedPrompts.map((prompt, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setQuery(prompt)}
+                    style={{ padding: '8px 14px', borderRadius: '16px', border: `1px solid ${t.borderDark}`, background: t.inputBg, color: t.textMuted, fontSize: '0.8rem', cursor: 'pointer' }}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {uploadStatus && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: t.inputBg, border: `1px solid ${t.borderDark}`, padding: '6px 14px', borderRadius: '16px', fontSize: '0.8rem', marginBottom: '12px', color: t.textMuted }}>
-            <Paperclip size={14} />
-            <span style={{ maxWidth: '350px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{uploadStatus}</span>
-            {file && <X size={14} style={{ cursor: 'pointer', marginLeft: '5px' }} onClick={() => { setFile(null); setUploadStatus(''); }} />}
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: t.inputBg, border: `1px solid ${t.borderDark}`, padding: '6px 14px', borderRadius: '16px', fontSize: '0.8rem', color: t.textMuted }}>
+              <Paperclip size={14} />
+              <span style={{ maxWidth: '350px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{uploadStatus}</span>
+              {file && <X size={14} style={{ cursor: 'pointer', marginLeft: '5px' }} onClick={() => { setFile(null); setUploadStatus(''); }} />}
+            </div>
+            {typeof uploadProgress === 'number' && uploadProgress < 100 && (
+              <div style={{ width: '220px', height: '4px', background: t.borderDark, borderRadius: '2px', marginTop: '6px', overflow: 'hidden' }}>
+                <div style={{ width: `${uploadProgress}%`, height: '100%', background: t.accent, borderRadius: '2px', transition: 'width 0.4s ease' }} />
+              </div>
+            )}
           </div>
         )}
         
