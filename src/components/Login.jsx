@@ -8,11 +8,33 @@ export default function Login({ onGuestLogin }) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError("Enter your email above first, then click 'Forgot password?'");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin
+      });
+      if (error) throw error;
+      setResetSent(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setResetSent(false);
 
     try {
       if (isSignUp) {
@@ -67,6 +89,12 @@ export default function Login({ onGuestLogin }) {
             {error}
           </div>
         )}
+
+        {resetSent && (
+          <div style={{ padding: '10px', backgroundColor: '#052e16', border: '1px solid #22c55e', color: '#86efac', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem' }}>
+            Password reset email sent - check your inbox.
+          </div>
+        )}
         
         <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {isSignUp && (
@@ -95,6 +123,16 @@ export default function Login({ onGuestLogin }) {
             required
             style={{ padding: '12px', background: '#09090b', border: '1px solid #3f3f46', borderRadius: '8px', color: '#fff', outline: 'none' }}
           />
+
+          {!isSignUp && (
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.8rem', alignSelf: 'flex-end', padding: 0, marginTop: '-6px' }}
+            >
+              Forgot password?
+            </button>
+          )}
           
           <button 
             type="submit" 
