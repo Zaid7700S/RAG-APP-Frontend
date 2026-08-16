@@ -6,6 +6,7 @@ export default function DocumentManager({ t, onClose, session, isGuest, getAuthH
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteError, setDeleteError] = useState('');
 
   const fetchDocuments = async () => {
     try {
@@ -28,6 +29,7 @@ export default function DocumentManager({ t, onClose, session, isGuest, getAuthH
   const handleDelete = async (fileName) => {
     if (!window.confirm(`Are you sure you want to delete ${fileName}? This removes it from your knowledge base.`)) return;
     
+    setDeleteError('');
     try {
       setDocuments(prev => prev.filter(doc => doc.file_name !== fileName));
       const backendUrl = "https://rag-app-6zlh.onrender.com";
@@ -35,7 +37,7 @@ export default function DocumentManager({ t, onClose, session, isGuest, getAuthH
         headers: { ...getAuthHeaders() }
       });
     } catch (error) {
-      alert("Failed to delete document.");
+      setDeleteError(error.response?.data?.detail || `Failed to delete ${fileName}. Please try again.`);
       fetchDocuments(); // Revert on failure
     }
   };
@@ -59,8 +61,15 @@ export default function DocumentManager({ t, onClose, session, isGuest, getAuthH
               </span>
             )}
           </h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer' }}><X size={20} /></button>
+          <button onClick={onClose} title="Close" aria-label="Close" style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer' }}><X size={20} /></button>
         </div>
+
+        {deleteError && (
+          <div style={{ padding: '10px 1.5rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderBottom: `1px solid ${t.border}`, color: t.danger, fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+            <span>{deleteError}</span>
+            <X size={14} style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => setDeleteError('')} role="button" aria-label="Dismiss" />
+          </div>
+        )}
 
         {/* Search Bar */}
         <div style={{ padding: '1rem 1.5rem', borderBottom: `1px solid ${t.border}` }}>
@@ -99,7 +108,7 @@ export default function DocumentManager({ t, onClose, session, isGuest, getAuthH
                       {doc.summary}
                     </p>
                   </div>
-                  <button onClick={() => handleDelete(doc.file_name)} style={{ background: t.inputBg, border: `1px solid ${t.borderDark}`, color: t.danger, padding: '8px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <button onClick={() => handleDelete(doc.file_name)} title={`Delete ${doc.file_name}`} aria-label={`Delete ${doc.file_name}`} style={{ background: t.inputBg, border: `1px solid ${t.borderDark}`, color: t.danger, padding: '8px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Trash2 size={16} />
                   </button>
                 </div>
