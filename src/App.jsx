@@ -89,6 +89,8 @@ export default function App() {
   const [uploadProgress, setUploadProgress] = useState(null); // 0-100 or null when not applicable
   const [apiKeyError, setApiKeyError] = useState('');
   const [validatingKeys, setValidatingKeys] = useState(false);
+  const [serverWaking, setServerWaking] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
   
   const chatEndRef = useRef(null);
   const t = themeColors[theme];
@@ -125,6 +127,46 @@ export default function App() {
     window.addEventListener('resize', handleResize);
     return () => { subscription.unsubscribe(); window.removeEventListener('resize', handleResize); };
   }, []);
+
+  // Render's free tier spins the backend down after inactivity - the next request
+  // just hangs for 30-60s with no signal from the server that it's "waking up".
+  // We can't ask Render directly, so we infer it: ping /health on load, and if it
+  // hasn't answered within a few seconds, assume a cold start and say so.
+  useEffect(() => {
+    const backendUrl = "https://rag-app-6zlh.onrender.com";
+    let resolved = false;
+    const wakeTimer = setTimeout(() => {
+      if (!resolved) setServerWaking(true);
+    }, 3000);
+
+    axios.get(`${backendUrl}/health`).catch(() => {}).finally(() => {
+      resolved = true;
+      clearTimeout(wakeTimer);
+      setServerWaking(false);
+    });
+
+    return () => clearTimeout(wakeTimer);
+  }, []);
+
+  // Now that the backend actually verifies tokens, a stale/expired Supabase
+  // session will get a real 401/403 - without this, that just fails silently
+  // (console.error) with no indication the user needs to log in again.
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        const status = error.response?.status;
+        const detail = error.response?.data?.detail || '';
+        const url = error.config?.url || '';
+        const isAuthFailure = detail.includes('Authorization') || detail.includes('Not authorized');
+        if ((status === 401 || status === 403) && isAuthFailure && !isGuest && url.includes('rag-app-6zlh.onrender.com')) {
+          setSessionExpired(true);
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => axios.interceptors.response.eject(interceptor);
+  }, [isGuest]);
 
    const initializeUserData = async (user) => {
     const { data: { user: freshUser } } = await supabase.auth.getUser();
@@ -322,6 +364,23 @@ export default function App() {
     if (!isGuest && session?.user?.id) {
       await supabase.from('workspace_sessions').delete().eq('id', idToDelete);
     }
+  };
+
+  // Sessions keep their own 'attached files' list, separate from the Knowledge
+  // Base. Deleting a doc there never touched those lists before, so an old
+  // session could keep showing a file as attached long after it was gone.
+  const handleDocumentDeleted = (fileName) => {
+    setSessions(prev => prev.map(s => {
+      if (!s.files || !s.files.includes(fileName)) return s;
+      const newFiles = s.files.filter(f => f !== fileName);
+      if (!isGuest && session?.user?.id) {
+        supabase.from('workspace_sessions').upsert({
+          id: s.id, user_id: session.user.id, title: s.title,
+          history: s.history, files: newFiles, updated_at: new Date().toISOString()
+        }).then();
+      }
+      return { ...s, files: newFiles };
+    }));
   };
 
   const handleFileSelect = async (e) => {
@@ -540,18 +599,49 @@ export default function App() {
     }
   };
 
-  if (!authChecked) return (
-    <div style={{ height: '100vh', width: '100vw', background: t.bgMain, display: 'flex', justifyContent: 'center', alignItems: 'center', color: t.textMain, fontFamily: 'system-ui, sans-serif' }}>
-      Loading...
+  const wakeBanner = serverWaking ? (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, padding: '8px 16px', background: '#f59e0b', color: '#1c1917', textAlign: 'center', fontSize: '0.8rem', fontWeight: '600', zIndex: 2000 }}>
+      ⏳ Waking up the server (it was idle) - this can take up to a minute on first use.
     </div>
+  ) : null;
+
+  const sessionExpiredModal = sessionExpired ? (
+    <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', boxSizing: 'border-box' }}>
+      <div style={{ background: t.bgMain, border: `1px solid ${t.border}`, borderRadius: '16px', padding: '2rem', maxWidth: '360px', textAlign: 'center', color: t.textMain }}>
+        <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.95rem' }}>Your session has expired. Please log in again to continue.</p>
+        <button
+          onClick={async () => { setSessionExpired(false); await handleLogout(); }}
+          style={{ padding: '10px 20px', background: t.accent, color: t.accentText, border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}
+        >
+          Log In Again
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  if (!authChecked) return (
+    <>
+      {wakeBanner}
+      <div style={{ height: '100vh', width: '100vw', background: t.bgMain, display: 'flex', justifyContent: 'center', alignItems: 'center', color: t.textMain, fontFamily: 'system-ui, sans-serif' }}>
+        Loading...
+      </div>
+    </>
   );
 
-  if (!session) return <Login onGuestLogin={handleGuestLogin} />;
+  if (!session) return (
+    <>
+      {wakeBanner}
+      <Login onGuestLogin={handleGuestLogin} />
+    </>
+  );
   
   if (!isAppReady) return (
-    <div style={{ height: '100vh', width: '100vw', background: t.bgMain, display: 'flex', justifyContent: 'center', alignItems: 'center', color: t.textMain, fontFamily: 'system-ui, sans-serif' }}>
-      Fetching cloud workspace...
-    </div>
+    <>
+      {wakeBanner}
+      <div style={{ height: '100vh', width: '100vw', background: t.bgMain, display: 'flex', justifyContent: 'center', alignItems: 'center', color: t.textMain, fontFamily: 'system-ui, sans-serif' }}>
+        Fetching cloud workspace...
+      </div>
+    </>
   );
 
   const userFullName = isGuest ? 'Guest' : (session.user.user_metadata?.full_name || session.user.email.split('@')[0]);
@@ -559,6 +649,8 @@ export default function App() {
 
   return (
     <>
+      {wakeBanner}
+      {sessionExpiredModal}
       <style>
         {`
           ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -629,6 +721,7 @@ export default function App() {
           session={session} 
           isGuest={isGuest}
           getAuthHeaders={getAuthHeaders}
+          onDocumentDeleted={handleDocumentDeleted}
           onClose={() => setShowDocumentManager(false)} 
         />
       )}
