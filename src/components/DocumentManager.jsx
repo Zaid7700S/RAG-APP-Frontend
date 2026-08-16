@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, Trash2, FileText, Loader } from 'lucide-react';
 import axios from 'axios';
 
-export default function DocumentManager({ t, onClose, session, isGuest, getAuthHeaders }) {
+export default function DocumentManager({ t, onClose, session, isGuest, getAuthHeaders, onDocumentDeleted }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,6 +36,7 @@ export default function DocumentManager({ t, onClose, session, isGuest, getAuthH
       await axios.delete(`${backendUrl}/api/documents/${session.user.id}/${fileName}`, {
         headers: { ...getAuthHeaders() }
       });
+      onDocumentDeleted?.(fileName);
     } catch (error) {
       setDeleteError(error.response?.data?.detail || `Failed to delete ${fileName}. Please try again.`);
       fetchDocuments(); // Revert on failure
