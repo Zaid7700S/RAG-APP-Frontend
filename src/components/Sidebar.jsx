@@ -9,7 +9,7 @@ export default function Sidebar({
   showSettingsDrawer, setShowSettingsDrawer,
   apiKey, tempApiKey, setTempApiKey,
   hfApiKey, tempHfApiKey, setTempHfApiKey,
-  handleSaveApiKey,
+  handleSaveApiKey, apiKeyError, validatingKeys,
   userFullName, handleLogout, isGuest,
   session, getAuthHeaders,
   setShowDocumentManager 
@@ -89,10 +89,10 @@ export default function Sidebar({
             <span style={{ color: t.textMain, fontWeight: '600', fontSize: '1.1rem' }}>System</span>
           </h1>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer', padding: '4px' }}>
+            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer', padding: '4px' }}>
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer', padding: '4px' }}>
+            <button onClick={() => setIsSidebarOpen(false)} title="Collapse sidebar" aria-label="Collapse sidebar" style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer', padding: '4px' }}>
               <Menu size={18} />
             </button>
           </div>
@@ -108,6 +108,7 @@ export default function Sidebar({
           <button 
             onClick={() => setShowDocumentManager(true)}
             title="Manage Documents"
+            aria-label="Manage Documents"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', background: t.inputBg, color: t.textMain, border: `1px solid ${t.borderDark}`, borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s' }}
           >
             <FolderOpen size={16} />
@@ -165,12 +166,12 @@ export default function Sidebar({
                     <Check size={14} />
                   </button>
                 ) : (
-                  <button onClick={(e) => startEditing(e, s)} style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer', padding: '4px', opacity: (isMobile || s.id === activeSessionId) ? 0.8 : 0 }}>
+                  <button onClick={(e) => startEditing(e, s)} title="Rename session" aria-label="Rename session" style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer', padding: '4px', opacity: (isMobile || s.id === activeSessionId) ? 0.8 : 0 }}>
                     <Edit2 size={14} />
                   </button>
                 )}
                 
-                <button onClick={(e) => deleteSession(e, s.id)} title="Delete Session" style={{ background: 'none', border: 'none', color: t.danger, cursor: 'pointer', padding: '4px', opacity: (isMobile || s.id === activeSessionId) ? 0.8 : 0 }}>
+                <button onClick={(e) => deleteSession(e, s.id)} title="Delete session" aria-label="Delete session" style={{ background: 'none', border: 'none', color: t.danger, cursor: 'pointer', padding: '4px', opacity: (isMobile || s.id === activeSessionId) ? 0.8 : 0 }}>
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -183,15 +184,25 @@ export default function Sidebar({
             <form onSubmit={handleSaveApiKey} style={{ background: t.inputBg, padding: '12px', borderRadius: '12px', border: `1px solid ${t.borderDark}`, boxSizing: 'border-box' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: t.textMuted }}>SET API KEYS</span>
-                <X size={14} style={{ cursor: 'pointer', color: t.textMuted }} onClick={() => setShowSettingsDrawer(false)} />
+                <X size={14} style={{ cursor: 'pointer', color: t.textMuted }} onClick={() => setShowSettingsDrawer(false)} role="button" aria-label="Close settings" />
               </div>
               <input type="password" value={tempApiKey} onChange={(e) => setTempApiKey(e.target.value)} placeholder="Groq Key (gsk_...)" style={{ width: '100%', padding: '8px', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '8px', color: t.textMain, fontSize: '0.85rem', boxSizing: 'border-box', marginBottom: '8px', outline: 'none' }} />
               <input type="password" value={tempHfApiKey} onChange={(e) => setTempHfApiKey(e.target.value)} placeholder="Hugging Face Token (hf_...)" style={{ width: '100%', padding: '8px', background: t.bgSidebar, border: `1px solid ${t.borderDark}`, borderRadius: '8px', color: t.textMain, fontSize: '0.85rem', boxSizing: 'border-box', marginBottom: '10px', outline: 'none' }} />
-              <button type="submit" style={{ width: '100%', padding: '8px', background: t.accent, color: t.accentText, border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>Save Keys</button>
+              {apiKeyError && (
+                <div style={{ fontSize: '0.75rem', color: t.danger, marginBottom: '10px', lineHeight: '1.4' }}>{apiKeyError}</div>
+              )}
+              <button type="submit" disabled={validatingKeys} style={{ width: '100%', padding: '8px', background: t.accent, color: t.accentText, border: 'none', borderRadius: '8px', cursor: validatingKeys ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 'bold', opacity: validatingKeys ? 0.7 : 1 }}>
+                {validatingKeys ? 'Validating...' : 'Save Keys'}
+              </button>
             </form>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div onClick={() => { setTempApiKey(apiKey); setTempHfApiKey(hfApiKey); setShowSettingsDrawer(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', borderRadius: '12px', cursor: 'pointer', color: t.textMuted, backgroundColor: t.inputBg, border: `1px solid ${t.borderDark}` }}>
+              <div 
+                onClick={() => { setTempApiKey(apiKey); setTempHfApiKey(hfApiKey); setShowSettingsDrawer(true); }} 
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTempApiKey(apiKey); setTempHfApiKey(hfApiKey); setShowSettingsDrawer(true); } }}
+                role="button" tabIndex={0}
+                aria-label={(apiKey && hfApiKey) ? 'APIs configured - click to edit' : 'Set API keys'}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', borderRadius: '12px', cursor: 'pointer', color: t.textMuted, backgroundColor: t.inputBg, border: `1px solid ${t.borderDark}` }}>
                 <Key size={16} color={(apiKey && hfApiKey) ? '#34d399' : t.danger} />
                 <span style={{ fontSize: '0.8rem', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(apiKey && hfApiKey) ? 'APIs Configured' : 'Set API Keys'}</span>
               </div>
@@ -203,7 +214,7 @@ export default function Sidebar({
                     {isGuest && <div style={{ fontSize: '0.7rem', color: t.textMuted }}>Guest Mode · not saved</div>}
                   </div>
                 </div>
-                <button onClick={handleLogout} title={isGuest ? 'Exit Guest Mode' : 'Logout'} style={{ background: 'none', border: 'none', color: t.danger, cursor: 'pointer', padding: '4px' }}><LogOut size={18} /></button>
+                <button onClick={handleLogout} title={isGuest ? 'Exit Guest Mode' : 'Logout'} aria-label={isGuest ? 'Exit Guest Mode' : 'Logout'} style={{ background: 'none', border: 'none', color: t.danger, cursor: 'pointer', padding: '4px' }}><LogOut size={18} /></button>
               </div>
             </div>
           )}
