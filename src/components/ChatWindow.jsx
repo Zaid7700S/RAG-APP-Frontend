@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Bot, FileText, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function ChatWindow({ t, chatHistory, loadingChat, chatEndRef }) {
   const [copiedIndex, setCopiedIndex] = useState(null);
@@ -25,10 +26,18 @@ export default function ChatWindow({ t, chatHistory, loadingChat, chatEndRef }) 
           
           .ai-markdown p { margin-top: 0; margin-bottom: 0.8rem; }
           .ai-markdown p:last-child { margin-bottom: 0; }
-          .ai-markdown ul, .ai-markdown ol { margin-top: 0; padding-left: 1.5rem; }
-          .ai-markdown li { margin-bottom: 0.3rem; }
+          .ai-markdown ul, .ai-markdown ol { margin-top: 0; margin-bottom: 0.8rem; padding-left: 1.5rem; }
+          .ai-markdown ul { list-style-type: disc; }
+          .ai-markdown ol { list-style-type: decimal; }
+          .ai-markdown li { margin-bottom: 0.3rem; display: list-item; }
+          .ai-markdown li > p { margin: 0; display: inline; }
           .ai-markdown pre { background: rgba(0,0,0,0.1); padding: 8px; border-radius: 6px; overflow-x: auto; }
           .ai-markdown code { background: rgba(0,0,0,0.1); padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+
+          .ai-markdown table { border-collapse: collapse; width: 100%; margin: 0.6rem 0 1rem 0; font-size: 0.88em; display: block; overflow-x: auto; white-space: nowrap; }
+          .ai-markdown th, .ai-markdown td { border: 1px solid ${t.borderDark}; padding: 6px 12px; text-align: left; }
+          .ai-markdown th { background: ${t.bgSidebar}; font-weight: 600; }
+          .ai-markdown tr:nth-child(even) td { background: rgba(128, 128, 128, 0.06); }
 
           .msg-row .msg-copy-btn { opacity: 0; transition: opacity 0.15s ease; }
           .msg-row:hover .msg-copy-btn { opacity: 1; }
@@ -73,7 +82,7 @@ export default function ChatWindow({ t, chatHistory, loadingChat, chatEndRef }) 
                 {msg.role === 'user' ? (
                   msg.content
                 ) : (
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                 )}
                 
                 {/* Typing Indicator */}
