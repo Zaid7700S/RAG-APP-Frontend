@@ -87,6 +87,8 @@ export default function App() {
   const [file, setFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState('');
   const [uploadProgress, setUploadProgress] = useState(null); // 0-100 or null when not applicable
+  const [apiKeyError, setApiKeyError] = useState('');
+  const [validatingKeys, setValidatingKeys] = useState(false);
   
   const chatEndRef = useRef(null);
   const t = themeColors[theme];
@@ -186,10 +188,42 @@ export default function App() {
     }
   }, [sessions, activeSessionId]);
 
+  const validateApiKeys = async (groqKey, hfKey) => {
+    try {
+      const backendUrl = "https://rag-app-6zlh.onrender.com";
+      const formData = new FormData();
+      formData.append('groq_api_key', groqKey);
+      formData.append('hf_api_key', hfKey);
+      const res = await axios.post(`${backendUrl}/api/validate-keys`, formData);
+      return res.data; // { groq_valid, hf_valid } - null means "couldn't verify", not "invalid"
+    } catch {
+      return { groq_valid: null, hf_valid: null };
+    }
+  };
+
   const handleSaveApiKey = async (e) => {
     e.preventDefault();
+    setApiKeyError('');
+
     if (!tempApiKey.trim() || !tempHfApiKey.trim()) {
-      alert("Both Groq and Hugging Face API keys are required to use the system.");
+      setApiKeyError("Both Groq and Hugging Face API keys are required to use the system.");
+      return;
+    }
+
+    setValidatingKeys(true);
+    const { groq_valid, hf_valid } = await validateApiKeys(tempApiKey.trim(), tempHfApiKey.trim());
+    setValidatingKeys(false);
+
+    if (groq_valid === false && hf_valid === false) {
+      setApiKeyError("Both keys look invalid. Double-check them and try again.");
+      return;
+    }
+    if (groq_valid === false) {
+      setApiKeyError("Groq API key looks invalid. Double-check it and try again.");
+      return;
+    }
+    if (hf_valid === false) {
+      setApiKeyError("Hugging Face token looks invalid. Double-check it and try again.");
       return;
     }
 
@@ -216,7 +250,7 @@ export default function App() {
       setShowSettingsDrawer(false);
       setDismissSetup(true);
     } catch (error) {
-      alert("Failed to securely save API keys to cloud.");
+      setApiKeyError("Failed to securely save API keys to cloud. Please try again.");
     }
   };
 
@@ -612,7 +646,7 @@ export default function App() {
           showSettingsDrawer={showSettingsDrawer} setShowSettingsDrawer={setShowSettingsDrawer}
           apiKey={apiKey} tempApiKey={tempApiKey} setTempApiKey={setTempApiKey} 
           hfApiKey={hfApiKey} tempHfApiKey={tempHfApiKey} setTempHfApiKey={setTempHfApiKey}
-          handleSaveApiKey={handleSaveApiKey}
+          handleSaveApiKey={handleSaveApiKey} apiKeyError={apiKeyError} validatingKeys={validatingKeys}
           userFullName={userFullName} handleLogout={handleLogout} isGuest={isGuest}
           session={session} getAuthHeaders={getAuthHeaders}
           setShowDocumentManager={setShowDocumentManager} 
